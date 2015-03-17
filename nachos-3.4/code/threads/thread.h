@@ -56,6 +56,9 @@
 #define StackSize	(4 * 1024)	// in words
 
 
+#define MaxProcessNum 128
+
+
 // Thread state
 enum ThreadStatus { JUST_CREATED, RUNNING, READY, BLOCKED };
 
@@ -81,7 +84,7 @@ class Thread {
     int machineState[MachineStateSize];  // all registers except for stackTop
 
   public:
-    Thread(char* debugName);		// initialize a Thread 
+    Thread(char* debugName,int threadUid = 0);		// initialize a Thread 
     ~Thread(); 				// deallocate a Thread
 					// NOTE -- thread being deleted
 					// must not be running when delete 
@@ -101,6 +104,19 @@ class Thread {
     void setStatus(ThreadStatus st) { status = st; }
     char* getName() { return (name); }
     void Print() { printf("%s, ", name); }
+    void PrintAll() { printf("name: %s, pid= %d, uid= %d \n", name, pid, uid);}
+    void TS() {
+        printf("-------------------- TS: ------------------------\n");
+        for (int i = 0; i < MaxProcessNum; ++i)
+        {
+            Thread* t = threadTable[i];
+            if (t != NULL)
+            {
+                t->PrintAll();
+            }
+        }
+        printf("\n");
+    }
 
   private:
     // some of the private data for this class is listed above
@@ -114,6 +130,16 @@ class Thread {
     void StackAllocate(VoidFunctionPtr func, int arg);
     					// Allocate a stack for thread.
 					// Used internally by Fork()
+
+    int uid; // user id
+    int pid; // process id
+
+    int PidAllocate();
+    void PidFree(int aPid);
+
+    static Thread* threadTable[MaxProcessNum];
+
+
 
 #ifdef USER_PROGRAM
 // A thread running a user program actually has *two* sets of CPU registers -- 

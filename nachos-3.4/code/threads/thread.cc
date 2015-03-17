@@ -24,20 +24,30 @@
 					// execution stack, for detecting 
 					// stack overflows
 
+Thread* Thread::threadTable[MaxProcessNum];
+
 //----------------------------------------------------------------------
 // Thread::Thread
 // 	Initialize a thread control block, so that we can then call
 //	Thread::Fork.
 //
 //	"threadName" is an arbitrary string, useful for debugging.
+//  default uid = 0, root user
 //----------------------------------------------------------------------
 
-Thread::Thread(char* threadName)
+Thread::Thread(char* threadName,int threadUid)
 {
     name = threadName;
     stackTop = NULL;
     stack = NULL;
     status = JUST_CREATED;
+
+    uid = threadUid;
+    pid = PidAllocate();
+    ASSERT(pid >= 0); // make sure pid allocate success 
+
+    threadTable[pid] = this;
+
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -149,6 +159,7 @@ Thread::Finish ()
     DEBUG('t', "Finishing thread \"%s\"\n", getName());
     
     threadToBeDestroyed = currentThread;
+    PidFree(pid);
     Sleep();					// invokes SWITCH
     // not reached
 }
@@ -318,3 +329,28 @@ Thread::RestoreUserState()
 	machine->WriteRegister(i, userRegisters[i]);
 }
 #endif
+
+
+//======================================================================
+// pid allocate
+//======================================================================
+int
+Thread::PidAllocate()
+{
+    for (int i = 0; i < MaxProcessNum; i++) {
+        if (threadTable[i] == NULL) {
+            return i;
+        }
+    }
+    DEBUG('t', "ThreadTable full when create \"%s\"\n", name);
+    return -1; // Pid Allocate Error 
+}
+
+//======================================================================
+// pid free
+//======================================================================
+void 
+Thread::PidFree(int aPid)
+{
+    threadTable[aPid] = NULL;
+}

@@ -33,6 +33,16 @@ SimpleThread(int which)
 	printf("*** thread %d looped %d times\n", which, num);
         currentThread->Yield();
     }
+    currentThread->TS();
+}
+
+//=============================================================================
+// SimpleThread Do nothing but run and finish
+//=============================================================================
+void 
+SimpleThreadDoNothing(int which)
+{
+    printf("*** thread %d run\n", which);
 }
 
 //----------------------------------------------------------------------
@@ -52,6 +62,44 @@ ThreadTest1()
     SimpleThread(0);
 }
 
+//=============================================================================
+// ThreadTest2
+// Test max Thread limit
+//=============================================================================
+void
+ThreadTest2()
+{
+    DEBUG('t', "Entering ThreadTest2");
+    for (int num = 0; num < 128; num++) {
+        Thread *t = new Thread("forked thread");
+        t->Fork(SimpleThread, num);   
+        // when num = 127, add the main thread,  will be over max thread limit
+    }
+    currentThread->Yield();
+}
+
+//=============================================================================
+// ThreadTest3
+// Test max Thread limit & pid free function, which will run normally
+//=============================================================================
+void
+ThreadTest3()
+{
+    DEBUG('t', "Entering ThreadTest3");
+    for (int num = 0; num < 127; num++) {
+        Thread *t = new Thread(" thread");
+        t->Fork(SimpleThreadDoNothing, num);   
+    }
+    currentThread->Yield();
+    // all 127 forked thread should run and finish normally (FIFO)
+    for (int num = 0; num < 127; num++) {
+        Thread *t = new Thread("forked thread");
+        t->Fork(SimpleThreadDoNothing, num);   
+    }
+    DEBUG('t', "Leaving ThreadTest3 normally");
+    // all 127 forked thread should run and finish normally
+}
+
 //----------------------------------------------------------------------
 // ThreadTest
 // 	Invoke a test routine.
@@ -62,8 +110,14 @@ ThreadTest()
 {
     switch (testnum) {
     case 1:
-	ThreadTest1();
-	break;
+    ThreadTest1();
+    break;
+    case 2:
+    ThreadTest2();
+    break;
+    case 3:
+    ThreadTest3();
+    break;
     default:
 	printf("No test specified.\n");
 	break;
