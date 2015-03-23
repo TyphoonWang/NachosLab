@@ -114,11 +114,9 @@ ThreadTest4()
     tLow->setPriority(2); // set priority before fork
     tLow->Fork(SimpleThread, 1);
 
-
     Thread *tHigh = new Thread("forked thread high");
     tHigh->setPriority(0);
     tHigh->Fork(SimpleThread, 2);
-
 
     SimpleThread(0);
 }

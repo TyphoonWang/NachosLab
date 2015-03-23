@@ -108,6 +108,11 @@ Thread::Fork(VoidFunctionPtr func, int arg)
     scheduler->ReadyToRun(this);	// ReadyToRun assumes that interrupts 
 					// are disabled!
     (void) interrupt->SetLevel(oldLevel);
+    // high thread take possession
+    if (this->priority < currentThread->priority)
+    {
+        currentThread->Yield(); 
+    }
 }    
 
 //----------------------------------------------------------------------
