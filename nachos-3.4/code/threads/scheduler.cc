@@ -30,6 +30,10 @@
 Scheduler::Scheduler()
 { 
     readyList = new List; 
+    for (int i = 0; i < MaxThreadPriority; ++i)
+    {
+        readyLists[i] = new List;
+    }
 } 
 
 //----------------------------------------------------------------------
