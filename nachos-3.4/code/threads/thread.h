@@ -106,15 +106,8 @@ class Thread {
     char* getName() { return (name); }
 
     // set priority before fork
-    // changed priority will be effective after it's schedule
-    void setPriority(int prio) { 
-        if (prio > MaxThreadPriority || prio < 0)
-        {
-             printf("Warning: Illigal priority for thread %s, ", name);
-             return;
-        }
-        priority = prio; 
-    }
+    // changed priority will be effective immidiatly
+    void setPriority(int prio) ;
     int getPriority() { return priority; }
 
     void Print() { printf("%s, ", name); }

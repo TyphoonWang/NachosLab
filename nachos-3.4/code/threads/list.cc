@@ -113,6 +113,55 @@ List::Prepend(void *item)
     }
 }
 
+// List::Remove(void *item)
+//      Remove the "item" from the the list.
+// 
+//----------------------------------------------------------------------
+
+void
+List::Remove(void *item)
+{
+    if (IsEmpty())
+    {
+        return;
+    }
+
+    ListElement *element = first;
+    if (first->item == item && last->item == item)
+    {
+        first = NULL;
+        last = NULL;
+    }
+    else if (first == item)
+    {
+        first = first->next;
+    }
+    else
+    {
+        ListElement *preElement = first;
+        element = element-> next;
+        while(element->item != item) {
+            preElement = element;
+            element = element -> next;
+            if (element == last && element->item != item)
+            {
+                return;
+            }
+        }
+        // find element->item == item
+        if (element == last)
+        {
+            last = preElement;
+            last->next = NULL;
+        }
+        else 
+        {
+            preElement->next = element->next;
+        }
+    }
+    delete element;
+}
+
 //----------------------------------------------------------------------
 // List::Remove
 //      Remove the first "item" from the front of the list.

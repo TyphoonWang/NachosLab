@@ -27,9 +27,8 @@ class Scheduler {
 					// list, if any, and return thread.
     void Run(Thread* nextThread);	// Cause nextThread to start running
     void Print();			// Print contents of ready list
-    
+    void priorityChanged(Thread* aThread,int oldPriority); // call when change thread priority
   private:
-    List *readyList;  		
     // queue of threads that are ready to run,
 		// but not running
     List *readyLists[MaxThreadPriority]; // array of ready list, different priority

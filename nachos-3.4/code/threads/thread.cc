@@ -77,6 +77,30 @@ Thread::~Thread()
 }
 
 //----------------------------------------------------------------------
+// Thread::setPriority
+// Set thread priority. 
+// If priority changed for a #ready thread, call scheduler->priorityChanged
+//----------------------------------------------------------------------
+
+void Thread::setPriority(int prio) { 
+        if (prio > MaxThreadPriority || prio < 0)
+        {
+             printf("Warning: Illigal priority for thread %s, ", name);
+             return;
+        }
+        if (prio == priority)
+        {
+            return;
+        }
+        int oldPriority = priority;
+        priority = prio; 
+        if (status == READY)
+        {
+            scheduler->priorityChanged(this,oldPriority);
+        }
+    }
+
+//----------------------------------------------------------------------
 // Thread::Fork
 // 	Invoke (*func)(arg), allowing caller and callee to execute 
 //	concurrently.
