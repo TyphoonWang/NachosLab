@@ -28,8 +28,7 @@
 //----------------------------------------------------------------------
 
 Scheduler::Scheduler()
-{ 
-    readyList = new List; 
+{
     for (int i = 0; i < MaxThreadPriority; ++i)
     {
         readyLists[i] = new List;
@@ -43,7 +42,10 @@ Scheduler::Scheduler()
 
 Scheduler::~Scheduler()
 { 
-    delete readyList; 
+    for (int i = 0; i < MaxThreadPriority; ++i)
+    {
+        delete readyLists[i];
+    }
 } 
 
 //----------------------------------------------------------------------
@@ -58,7 +60,7 @@ void
 Scheduler::ReadyToRun (Thread *thread)
 {
     DEBUG('t', "Putting thread %s on ready list.\n", thread->getName());
-
+    readyList = readyLists[thread->getPriority()];
     thread->setStatus(READY);
     readyList->Append((void *)thread);
 }
@@ -74,7 +76,17 @@ Scheduler::ReadyToRun (Thread *thread)
 Thread *
 Scheduler::FindNextToRun ()
 {
-    return (Thread *)readyList->Remove();
+
+    for (int i = 0; i < MaxThreadPriority; ++i)
+    {
+        readyList = readyLists[i];
+        if (readyList->IsEmpty())
+        {
+            continue;
+        }
+        return (Thread *)readyList->Remove();
+    }   
+    return NULL;
 }
 
 //----------------------------------------------------------------------
@@ -146,6 +158,11 @@ Scheduler::Run (Thread *nextThread)
 void
 Scheduler::Print()
 {
-    printf("Ready list contents:\n");
-    readyList->Mapcar((VoidFunctionPtr) ThreadPrint);
+    for (int i = 0; i < MaxThreadPriority; ++i)
+    {
+        printf("Ready list [ %d ] contents:\n", i);
+        readyList = readyLists[i];
+        readyList->Mapcar((VoidFunctionPtr) ThreadPrint);
+        printf("\n");
+    } 
 }

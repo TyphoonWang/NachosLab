@@ -33,6 +33,7 @@ SimpleThread(int which)
 	printf("*** thread %d looped %d times\n", which, num);
         currentThread->Yield();
     }
+    // when a simple thread finish, call TS
     currentThread->TS();
 }
 
@@ -100,6 +101,28 @@ ThreadTest3()
     // all 127 forked thread should run and finish normally
 }
 
+//=============================================================================
+// ThreadTest4
+// Test priority
+//=============================================================================
+void
+ThreadTest4()
+{
+    DEBUG('t', "Entering ThreadTest4");
+
+    Thread *tLow = new Thread("forked thread low");
+    tLow->setPriority(2); // set priority before fork
+    tLow->Fork(SimpleThread, 1);
+
+
+    Thread *tHigh = new Thread("forked thread high");
+    tHigh->setPriority(0);
+    tHigh->Fork(SimpleThread, 2);
+
+
+    SimpleThread(0);
+}
+
 //----------------------------------------------------------------------
 // ThreadTest
 // 	Invoke a test routine.
@@ -117,6 +140,9 @@ ThreadTest()
     break;
     case 3:
     ThreadTest3();
+    break;
+    case 4:
+    ThreadTest4();
     break;
     default:
 	printf("No test specified.\n");

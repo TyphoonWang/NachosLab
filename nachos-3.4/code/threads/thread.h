@@ -104,6 +104,9 @@ class Thread {
 						// overflowed its stack
     void setStatus(ThreadStatus st) { status = st; }
     char* getName() { return (name); }
+
+    // set priority before fork
+    // changed priority will be effective after it's schedule
     void setPriority(int prio) { 
         if (prio > MaxThreadPriority || prio < 0)
         {
@@ -112,6 +115,7 @@ class Thread {
         }
         priority = prio; 
     }
+    int getPriority() { return priority; }
 
     void Print() { printf("%s, ", name); }
     void PrintAll() { printf("name: %s, pid= %d, uid= %d \n", name, pid, uid);}

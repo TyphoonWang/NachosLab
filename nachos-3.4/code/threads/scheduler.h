@@ -29,8 +29,9 @@ class Scheduler {
     void Print();			// Print contents of ready list
     
   private:
-    List *readyList;  		// queue of threads that are ready to run,
-				// but not running
+    List *readyList;  		
+    // queue of threads that are ready to run,
+		// but not running
     List *readyLists[MaxThreadPriority]; // array of ready list, different priority
 };
 
