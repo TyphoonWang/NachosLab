@@ -58,6 +58,7 @@
 
 #define MaxProcessNum 128
 
+#define MaxThreadPriority 3 //  0 = Highest Priority, 1 normal, 2 low
 
 // Thread state
 enum ThreadStatus { JUST_CREATED, RUNNING, READY, BLOCKED };
@@ -103,6 +104,15 @@ class Thread {
 						// overflowed its stack
     void setStatus(ThreadStatus st) { status = st; }
     char* getName() { return (name); }
+    void setPriority(int prio) { 
+        if (prio > MaxThreadPriority || prio < 0)
+        {
+             printf("Warning: Illigal priority for thread %s, ", name);
+             return;
+        }
+        priority = prio; 
+    }
+
     void Print() { printf("%s, ", name); }
     void PrintAll() { printf("name: %s, pid= %d, uid= %d \n", name, pid, uid);}
     void TS() {
@@ -133,6 +143,7 @@ class Thread {
 
     int uid; // user id
     int pid; // process id
+    int priority; // priority , default 1 (normal)
 
     int PidAllocate();
     void PidFree(int aPid);

@@ -48,6 +48,8 @@ Thread::Thread(char* threadName,int threadUid)
 
     threadTable[pid] = this;
 
+    priority = 1;
+
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
