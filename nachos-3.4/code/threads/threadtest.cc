@@ -46,6 +46,19 @@ SimpleThreadDoNothing(int which)
     printf("*** thread %d run\n", which);
 }
 
+//=============================================================================
+// SimpleThread loop ticks
+//=============================================================================
+void 
+SimpleThreadLoop(int which)
+{
+    for (int i = 0; i < 50; ++i)
+    {
+        printf("*** thread %d Loop %d times\n", which,i);
+        interrupt->OneTick();
+    }
+}
+
 //----------------------------------------------------------------------
 // ThreadTest1
 // 	Set up a ping-pong between two threads, by forking a thread 
@@ -121,6 +134,25 @@ ThreadTest4()
     SimpleThread(0);
 }
 
+//=============================================================================
+// ThreadTest5
+// Test timer
+//=============================================================================
+void
+ThreadTest5()
+{
+    DEBUG('t', "Entering ThreadTest5");    
+    Thread *tHigh = new Thread("forked thread high");
+    tHigh->setPriority(0);
+    tHigh->Fork(SimpleThreadLoop, 1);
+    Thread *tNormal = new Thread("forked thread Normal");
+    tNormal->setPriority(1);
+    tNormal->Fork(SimpleThreadLoop, 2);
+    SimpleThreadLoop(3);
+    //printf("LEAVE!!!!\n");
+}
+
+
 //----------------------------------------------------------------------
 // ThreadTest
 // 	Invoke a test routine.
@@ -141,6 +173,9 @@ ThreadTest()
     break;
     case 4:
     ThreadTest4();
+    break;
+    case 5:
+    ThreadTest5();
     break;
     default:
 	printf("No test specified.\n");

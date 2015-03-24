@@ -110,6 +110,12 @@ class Thread {
     void setPriority(int prio) ;
     int getPriority() { return priority; }
 
+    // count and manage thread running ticks
+    int getTimerTick() { return timerTick; }
+    void resetTimerTick() { timerTick = 0; }
+    void increaseTimerTick() { timerTick ++; }
+    int  maxTimerTick() { return 1; }
+
     void Print() { printf("%s, ", name); }
     void PrintAll() { printf("name: %s, pid= %d, uid= %d \n", name, pid, uid);}
     void TS() {
@@ -141,6 +147,7 @@ class Thread {
     int uid; // user id
     int pid; // process id
     int priority; // priority , default 1 (normal)
+    int timerTick; 
 
     int PidAllocate();
     void PidFree(int aPid);

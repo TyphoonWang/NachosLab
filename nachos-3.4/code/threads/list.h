@@ -50,6 +50,8 @@ class List {
     void *Remove(); 	 	// Take item off the front of the list
     void Remove(void *item);  // remove item from list
     void Mapcar(VoidFunctionPtr func);	// Apply "func" to every element 
+
+    ListElement* First() { return first; }
 					// on the list
     bool IsEmpty();		// is the list empty? 
     

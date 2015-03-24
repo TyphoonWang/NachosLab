@@ -49,6 +49,7 @@ Thread::Thread(char* threadName,int threadUid)
     threadTable[pid] = this;
 
     priority = 1;
+    timerTick = 0;
 
 #ifdef USER_PROGRAM
     space = NULL;

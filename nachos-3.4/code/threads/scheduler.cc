@@ -102,6 +102,25 @@ Scheduler::FindNextToRun ()
 }
 
 //----------------------------------------------------------------------
+// Scheduler::PickNextToRun
+//  Return the next thread to be scheduled onto the CPU.
+//  If there are no ready threads, return NULL.
+//----------------------------------------------------------------------
+Thread *
+Scheduler::PickNextToRun () {
+    for (int i = 0; i < MaxThreadPriority; ++i)
+    {
+        List *readyList = readyLists[i];
+        if (readyList->IsEmpty())
+        {
+            continue;
+        }
+        return (Thread *)(readyList->First()->item);
+    }   
+    return NULL;
+}
+
+//----------------------------------------------------------------------
 // Scheduler::Run
 // 	Dispatch the CPU to nextThread.  Save the state of the old thread,
 //	and load the state of the new thread, by calling the machine
