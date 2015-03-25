@@ -189,7 +189,10 @@ Thread::Finish ()
     ASSERT(this == currentThread);
     
     DEBUG('t', "Finishing thread \"%s\"\n", getName());
-    
+    if (threadToBeDestroyed != NULL)
+    {
+        delete threadToBeDestroyed;
+    }
     threadToBeDestroyed = currentThread;
     PidFree(pid);
     Sleep();					// invokes SWITCH
