@@ -130,8 +130,46 @@ bool Lock::isHeldByCurrentThread()
     return currentThread == owner;
 }
 
-Condition::Condition(char* debugName) { }
-Condition::~Condition() { }
-void Condition::Wait(Lock* conditionLock) { ASSERT(FALSE); }
-void Condition::Signal(Lock* conditionLock) { }
-void Condition::Broadcast(Lock* conditionLock) { }
+Condition::Condition(char* debugName) 
+{
+    name = debugName;
+    conSem = new Semaphore("Condition semaphore", 0);
+    waiting = 0;
+}
+
+Condition::~Condition() 
+{
+    delete conSem; 
+}
+                   
+void Condition::Wait(Lock* conditionLock) 
+{
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    ASSERT(conditionLock->isHeldByCurrentThread());
+    conditionLock->Release();     //releasing the lock and
+    waiting ++;
+    conSem->P();                  // going to sleep until csignal / broadcast
+    conditionLock -> Acquire();   // then re-acquire the lock
+    (void) interrupt->SetLevel(oldLevel);
+}
+
+void Condition::Signal(Lock* conditionLock) 
+{ 
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    if (waiting > 0)
+    {
+        conSem -> V();
+    }
+    (void) interrupt->SetLevel(oldLevel);
+}
+
+void Condition::Broadcast(Lock* conditionLock) 
+{
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    while (waiting > 0)
+    {
+        conSem -> V();
+        waiting --;
+    }
+    (void) interrupt->SetLevel(oldLevel);
+}
