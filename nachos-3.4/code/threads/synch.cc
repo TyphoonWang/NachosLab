@@ -97,13 +97,38 @@ Semaphore::V()
     (void) interrupt->SetLevel(oldLevel);
 }
 
-// Dummy functions -- so we can compile our later assignments 
-// Note -- without a correct implementation of Condition::Wait(), 
-// the test case in the network assignment won't work!
-Lock::Lock(char* debugName) {}
-Lock::~Lock() {}
-void Lock::Acquire() {}
-void Lock::Release() {}
+Lock::Lock(char* debugName) 
+{
+    name = debugName;
+    owner = currentThread;
+    lockSem = new Semaphore("lock semaphore", 1);
+}
+
+Lock::~Lock() 
+{
+    delete lockSem;
+}
+
+void Lock::Acquire() 
+{
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    lockSem->P();
+    owner = currentThread;
+    (void) interrupt->SetLevel(oldLevel);
+}
+
+void Lock::Release() 
+{
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    ASSERT(isHeldByCurrentThread())
+    lockSem->V();
+    (void) interrupt->SetLevel(oldLevel);
+}
+
+bool Lock::isHeldByCurrentThread()
+{
+    return currentThread == owner;
+}
 
 Condition::Condition(char* debugName) { }
 Condition::~Condition() { }

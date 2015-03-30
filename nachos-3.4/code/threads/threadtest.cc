@@ -11,6 +11,7 @@
 
 #include "copyright.h"
 #include "system.h"
+#include "synch.h"
 
 // testnum is set in main.cc
 int testnum = 1;
@@ -152,6 +153,45 @@ ThreadTest5()
     //printf("LEAVE!!!!\n");
 }
 
+Lock* tLock6 = new Lock("ThreadTest6 Lock");
+
+//=============================================================================
+// SimpleThread lock Acquire and Release
+//=============================================================================
+void 
+SimpleThreadLock(int which)
+{
+    printf("%d try to acquire lock %s\n", which, tLock6->getName());
+    tLock6 -> Acquire();
+    printf("%d Acquired lock %s\n RUNNING ... \n", which, tLock6->getName());
+    for (int i = 0; i < 50; ++i) // Do some work!
+    {
+        interrupt->OneTick();
+    }
+    tLock6 -> Release();
+    printf("%d Release lock %s\n", which, tLock6->getName());
+}
+
+//=============================================================================
+// ThreadTest6
+// Test lock
+//=============================================================================
+
+void
+ThreadTest6()
+{
+    DEBUG('t', "Entering ThreadTest6");    
+    Thread *t0 = new Thread("forked thread 0");
+    t0->Fork(SimpleThreadLock, 0);
+    Thread *t1 = new Thread("forked thread 1");
+    t1->Fork(SimpleThreadLock, 1);
+    Thread *t2 = new Thread("forked thread 2");
+    t2->Fork(SimpleThreadLock, 2);
+    Thread *t3 = new Thread("forked thread 3");
+    t3->Fork(SimpleThreadLock, 3);
+    currentThread -> Yield();
+}
+
 
 //----------------------------------------------------------------------
 // ThreadTest
@@ -176,6 +216,9 @@ ThreadTest()
     break;
     case 5:
     ThreadTest5();
+    break;
+    case 6:
+    ThreadTest6();
     break;
     default:
 	printf("No test specified.\n");
