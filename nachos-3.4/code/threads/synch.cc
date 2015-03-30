@@ -159,6 +159,7 @@ void Condition::Signal(Lock* conditionLock)
     if (waiting > 0)
     {
         conSem -> V();
+        waiting --;
     }
     (void) interrupt->SetLevel(oldLevel);
 }
