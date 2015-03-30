@@ -137,4 +137,20 @@ class Condition {
     int waiting;
     // plus some other stuff you'll need to define
 };
+
+class SychBarrier
+{
+public:
+    SychBarrier(char* debugName, int maxThreadCount);
+    ~SychBarrier();
+    char* getName() { return (name); }
+    // After each thread finishes its work, it calls enter to wait at the barrier
+    void Enter();
+private:
+    char* name;
+    Semaphore* barrierSem;
+    int maxThread;
+    int threadCount; 
+};
+
 #endif // SYNCH_H

@@ -174,3 +174,35 @@ void Condition::Broadcast(Lock* conditionLock)
     }
     (void) interrupt->SetLevel(oldLevel);
 }
+
+SychBarrier::SychBarrier(char* debugName, int maxThreadCount) 
+{
+    name = debugName;
+    barrierSem  = new Semaphore("Barrier semaphore", 0);
+    maxThread   = maxThreadCount;
+    threadCount = 0;
+}
+
+SychBarrier::~SychBarrier()
+{
+    delete barrierSem;
+}
+
+// call when a thread finish
+void SychBarrier::Enter()
+{
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    threadCount ++;
+    if (threadCount == maxThread)
+    {
+        for (int i = 0; i < threadCount - 1; ++i)
+        {
+            barrierSem -> V(); 
+        }
+    }
+    else
+    {
+        barrierSem -> P();
+    }
+    (void) interrupt->SetLevel(oldLevel);
+}
