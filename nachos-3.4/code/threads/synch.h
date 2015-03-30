@@ -153,4 +153,21 @@ private:
     int threadCount; 
 };
 
+class RWLock
+{
+public:
+    RWLock(char* debugName);
+    ~RWLock();
+    char* getName() { return (name); }
+    void ReadBegin();
+    void ReadEnd();
+    void WriteBegin();
+    void WriteEnd();
+private:
+    Lock* writeLock;
+    Lock* readLock;
+    char* name;
+    int readerCount;
+};
+
 #endif // SYNCH_H

@@ -206,3 +206,53 @@ void SychBarrier::Enter()
     }
     (void) interrupt->SetLevel(oldLevel);
 }
+
+RWLock::RWLock(char* debugName)
+{
+    name = debugName;
+    writeLock = new Lock("Write Lock");
+    readLock  = new Lock("Read Lock");
+    readerCount = 0;
+}
+
+RWLock::~RWLock()
+{
+    delete readLock;
+    delete writeLock;
+}
+
+void RWLock::ReadBegin()
+{
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    writeLock->Acquire(); // test if anyone is writing, or try writing
+    writeLock->Release();
+    if (readerCount == 0)
+    {
+       readLock->Acquire(); // mark someone is reading
+    }
+    readerCount ++;
+    (void) interrupt->SetLevel(oldLevel);
+}
+
+void RWLock::ReadEnd()
+{
+    IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    readerCount --;
+    if (readerCount == 0)
+    {
+        readLock->Release();
+    }
+    (void) interrupt->SetLevel(oldLevel);
+}
+
+void RWLock::WriteBegin()
+{
+    writeLock ->Acquire(); // try writing
+    readLock->Acquire();   // and no one reading
+}
+
+void RWLock::WriteEnd()
+{
+    readLock->Release();
+    writeLock ->Release();
+}
