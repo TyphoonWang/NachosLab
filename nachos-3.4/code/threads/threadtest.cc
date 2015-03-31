@@ -224,7 +224,7 @@ void writer(int which)
 }
 //=============================================================================
 // ThreadTest7
-// Test RWLock with reader writer problem
+// Test RWLock with reader writer problem , writer first!
 //=============================================================================
 void
 ThreadTest7()
@@ -284,6 +284,105 @@ ThreadTest8()
     t3->Fork(doSomeThingSynch, 3);
 }
 
+Condition *rCondition;
+Condition *wCondition;
+Lock *cwLock;
+Lock *crLock;
+int readerCount;
+bool isWriting;
+void cReader(int which)
+{
+    printf("\t\t\t -%d- Try read...\n", which);
+    crLock->Acquire(); 
+    printf("\t\t\t -%d- Try read(Conditon Wait)...\n", which);
+    if (isWriting) // if no one writing, just read
+    {
+        rCondition->Wait(crLock); // work fine is user program
+                                  // if context switch happen exactly when isWriting just set
+                                  // solotion 1 : manually handle interrupt ( or any other way to make sure isWriting is right
+                                  // solotion 2 : use read / write lock to solve this problem
+                                  // solotion 3 (currently using): use cLock when modifiy isWriting
+    } 
+    crLock->Release();
+
+    readerCount ++;
+    for (int i = 0; i < 50; ++i) // Do some work!
+    {
+        interrupt->OneTick();
+        printf("-%d- is Reading %d : %d/%d \n", which, rwContent, i, 50);
+    }
+    readerCount--;
+    if (readerCount == 0)
+    {
+        wCondition->Signal(cwLock); // notifiy a writer
+    }
+    printf("\t\t\t -%d- Finish Read : %d\n", which, rwContent);
+}
+
+void cWriter(int which)
+{
+    printf("\t\t\t -%d- Try write...\n", which);
+    cwLock->Acquire();
+    if (readerCount > 0)
+    {
+        printf("\t\t\t -%d- Waiting wCondion...\n", which);
+        wCondition->Wait(cwLock); //wait all reader finish!
+    }  
+    crLock->Acquire(); // solotion 3
+    isWriting = true;
+    crLock->Release(); 
+    for (int i = 0; i < 50; ++i) // Do some work!
+    {
+        interrupt->OneTick();
+        printf("-%d- is Writing %d : %d/%d \n", which, which, i, 50);
+    }
+    rwContent = which;
+    printf("\t\t\t -%d- Write %d into rwContent \n", which, which);
+    printf("\t\t\t -%d- Broadcasting... \n", which);
+    isWriting = false;
+    rCondition->Broadcast(crLock); // use  broad cast , reader first!
+    cwLock->Release();
+    if (readerCount == 0) // reader first!
+    {
+        wCondition->Signal(cwLock); // notifiy a writer
+    }
+}
+//=============================================================================
+// ThreadTest9
+// Test Reader / Writer via condition
+//=============================================================================
+void
+ThreadTest9()
+{
+    DEBUG('t', "Entering ThreadTest9");    
+    cwLock = new Lock("Writer Lock");
+    crLock = new Lock("Reader Lock"); // Broad cast via condition
+    rCondition = new Condition("Condition Read");
+    wCondition = new Condition("Condition Write");
+    readerCount = 0;
+    rwContent = 0;
+    isWriting = false;
+
+    Thread *t0 = new Thread("writer 0");
+    t0->Fork(cWriter, 0);
+
+    Thread *t1 = new Thread("reader 1");
+    t1->Fork(cReader, 1);
+
+    Thread *t2 = new Thread("reader 2");
+    t2->Fork(cReader, 2);
+
+    Thread *t3 = new Thread("writer 3");
+    t3->Fork(cWriter, 3);
+
+    Thread *t4 = new Thread("writer 4");
+    t4->Fork(cWriter, 4);
+
+    Thread *t5 = new Thread("reader 5");
+    t5->Fork(cReader, 5);
+    currentThread -> Yield();
+}
+
 //----------------------------------------------------------------------
 // ThreadTest
 // 	Invoke a test routine.
@@ -317,6 +416,10 @@ ThreadTest()
     case 8:
     ThreadTest8(); // barrier
     break;
+    case 9: // reader / writer problem via condition var
+    ThreadTest9();
+    break;
+
     default:
 	printf("No test specified.\n");
 	break;
