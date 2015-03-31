@@ -114,6 +114,7 @@ void Lock::Acquire()
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
     lockSem->P();
     owner = currentThread;
+    DEBUG('t', "Lock %s - Change owner to %s\n", name, currentThread->getName());
     (void) interrupt->SetLevel(oldLevel);
 }
 
@@ -224,11 +225,16 @@ RWLock::~RWLock()
 void RWLock::ReadBegin()
 {
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
+    DEBUG('t', "%s Acquiring WriteLock...\n", currentThread->getName());
     writeLock->Acquire(); // test if anyone is writing, or try writing
+    DEBUG('t', "%s Acquired WriteLock!!!\n", currentThread->getName());
     writeLock->Release();
+    DEBUG('t', "%s Give up WriteLock!!!\n", currentThread->getName());
     if (readerCount == 0)
     {
+       DEBUG('t', "%s Acquiring ReadLock...\n", currentThread->getName());
        readLock->Acquire(); // mark someone is reading
+       DEBUG('t', "%s Acquired ReadLock\n", currentThread->getName());
     }
     readerCount ++;
     (void) interrupt->SetLevel(oldLevel);
@@ -240,6 +246,8 @@ void RWLock::ReadEnd()
     readerCount --;
     if (readerCount == 0)
     {
+        DEBUG('t', "%s Give up ReadLock\n", currentThread->getName());
+        readLock->setOwner(currentThread);
         readLock->Release();
     }
     (void) interrupt->SetLevel(oldLevel);
@@ -247,12 +255,18 @@ void RWLock::ReadEnd()
 
 void RWLock::WriteBegin()
 {
+    DEBUG('t', "%s Acquiring WriteLock...\n", currentThread->getName());
     writeLock ->Acquire(); // try writing
+    DEBUG('t', "%s Acquired WriteLock!!\n", currentThread->getName());
+    DEBUG('t', "%s Acquiring ReadLock...\n", currentThread->getName());
     readLock->Acquire();   // and no one reading
+    DEBUG('t', "%s Acquired ReadLock!!\n", currentThread->getName());
 }
 
 void RWLock::WriteEnd()
 {
     readLock->Release();
+    DEBUG('t', "%s Give up ReadLock\n", currentThread->getName());
     writeLock ->Release();
+    DEBUG('t', "%s Give up WriteLock\n", currentThread->getName());
 }

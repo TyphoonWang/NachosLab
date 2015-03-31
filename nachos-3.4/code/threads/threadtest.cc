@@ -192,6 +192,66 @@ ThreadTest6()
     currentThread -> Yield();
 }
 
+RWLock* rwlock;
+int rwContent;
+void reader(int which)
+{
+    printf("\t\t\t -%d- Try read...\n", which);
+    rwlock->ReadBegin();
+    for (int i = 0; i < 50; ++i) // Do some work!
+    {
+        interrupt->OneTick();
+        printf("-%d- is Reading %d : %d/%d \n", which, rwContent, i, 50);
+    }
+    printf("\t\t\t -%d- Read : %d\n", which, rwContent);
+    rwlock->ReadEnd();
+    printf("\t\t\t -%d- Finish read...\n", which);
+}
+
+void writer(int which)
+{
+    printf("\t\t\t -%d- Try write...\n", which);
+    rwlock->WriteBegin();
+    for (int i = 0; i < 50; ++i) // Do some work!
+    {
+        interrupt->OneTick();
+        printf("-%d- is Writing %d : %d/%d \n", which, which, i, 50);
+    }
+    rwContent = which;
+    printf("\t\t\t -%d- Write %d into rwContent \n", which, which);
+    rwlock->WriteEnd();
+    printf("\t\t\t -%d- Finish write...\n", which);
+}
+//=============================================================================
+// ThreadTest7
+// Test RWLock with reader writer problem
+//=============================================================================
+void
+ThreadTest7()
+{
+    DEBUG('t', "Entering ThreadTest7");    
+    rwlock = new RWLock("ThreadTest7");
+    rwContent = 0;
+    Thread *t0 = new Thread("writer 0");
+    t0->Fork(writer, 0);
+
+    Thread *t1 = new Thread("reader 1");
+    t1->Fork(reader, 1);
+
+    Thread *t2 = new Thread("reader 2");
+    t2->Fork(reader, 2);
+
+    Thread *t3 = new Thread("writer 3");
+    t3->Fork(writer, 3);
+
+    Thread *t4 = new Thread("writer 4");
+    t4->Fork(writer, 4);
+
+    Thread *t5 = new Thread("reader 5");
+    t5->Fork(reader, 5);
+    currentThread -> Yield();
+}
+
 
 //----------------------------------------------------------------------
 // ThreadTest
@@ -219,6 +279,9 @@ ThreadTest()
     break;
     case 6:
     ThreadTest6();
+    break;
+    case 7:
+    ThreadTest7(); // reader / writer problem
     break;
     default:
 	printf("No test specified.\n");

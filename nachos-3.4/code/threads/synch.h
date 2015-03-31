@@ -76,6 +76,11 @@ class Lock {
 					// holds this lock.  Useful for
 					// checking in Release, and in
 					// Condition variable ops below.
+    
+    void setOwner(Thread* newOwner) { 
+        DEBUG('t', "Lock %s - Change owner to %s\n", name, newOwner->getName());
+        owner = newOwner; 
+    } // need by RWLock
 
   private:
     char* name;				// for debugging
