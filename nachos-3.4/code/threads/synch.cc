@@ -176,7 +176,7 @@ void Condition::Broadcast(Lock* conditionLock)
     (void) interrupt->SetLevel(oldLevel);
 }
 
-SychBarrier::SychBarrier(char* debugName, int maxThreadCount) 
+SynchBarrier::SynchBarrier(char* debugName, int maxThreadCount) 
 {
     name = debugName;
     barrierSem  = new Semaphore("Barrier semaphore", 0);
@@ -184,13 +184,13 @@ SychBarrier::SychBarrier(char* debugName, int maxThreadCount)
     threadCount = 0;
 }
 
-SychBarrier::~SychBarrier()
+SynchBarrier::~SynchBarrier()
 {
     delete barrierSem;
 }
 
-// call when a thread finish
-void SychBarrier::Enter()
+// need call when a thread finish working
+void SynchBarrier::Enter()
 {
     IntStatus oldLevel = interrupt->SetLevel(IntOff);
     threadCount ++;

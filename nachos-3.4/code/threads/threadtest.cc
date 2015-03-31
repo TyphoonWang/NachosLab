@@ -252,6 +252,37 @@ ThreadTest7()
     currentThread -> Yield();
 }
 
+SynchBarrier *barrier;
+void doSomeThingSynch(int which)
+{
+    printf("\t\t\t -%d- Do SomeThing Sync...\n", which);
+    for (int i = 0; i < which * 10 ; ++i) // Do some work!
+    {
+        interrupt->OneTick();
+        printf("-%d- is working.... : %d/%d \n", which, i, which * 10);
+    }
+    printf("\t\t\t -%d- Finish working and waiting for synch...\n", which);
+    barrier->Enter();
+    printf("\t\t\t -%d- Finish Sync !!!\n", which);
+}
+//=============================================================================
+// ThreadTest8
+// Test Barrier
+//=============================================================================
+void
+ThreadTest8()
+{
+    DEBUG('t', "Entering ThreadTest8"); 
+    barrier = new SynchBarrier("barrier", 3);
+    Thread *t1 = new Thread("worker 1");
+    t1->Fork(doSomeThingSynch, 1);
+
+    Thread *t2 = new Thread("worker 2");
+    t2->Fork(doSomeThingSynch, 2);
+
+    Thread *t3 = new Thread("worker 3");
+    t3->Fork(doSomeThingSynch, 3);
+}
 
 //----------------------------------------------------------------------
 // ThreadTest
@@ -282,6 +313,9 @@ ThreadTest()
     break;
     case 7:
     ThreadTest7(); // reader / writer problem
+    break;
+    case 8:
+    ThreadTest8(); // barrier
     break;
     default:
 	printf("No test specified.\n");

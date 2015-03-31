@@ -143,11 +143,11 @@ class Condition {
     // plus some other stuff you'll need to define
 };
 
-class SychBarrier
+class SynchBarrier
 {
 public:
-    SychBarrier(char* debugName, int maxThreadCount);
-    ~SychBarrier();
+    SynchBarrier(char* debugName, int maxThreadCount);
+    ~SynchBarrier();
     char* getName() { return (name); }
     // After each thread finishes its work, it calls enter to wait at the barrier
     void Enter();
@@ -155,7 +155,7 @@ private:
     char* name;
     Semaphore* barrierSem;
     int maxThread;
-    int threadCount; 
+    int threadCount;
 };
 
 class RWLock
