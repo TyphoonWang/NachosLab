@@ -297,7 +297,7 @@ void cReader(int which)
     printf("\t\t\t -%d- Try read(Conditon Wait)...\n", which);
     if (isWriting) // if no one writing, just read
     {
-        rCondition->Wait(crLock); // work fine is user program
+        rCondition->Wait(crLock); // should work fine in user program
                                   // if context switch happen exactly when isWriting just set
                                   // solotion 1 : manually handle interrupt ( or any other way to make sure isWriting is right
                                   // solotion 2 : use read / write lock to solve this problem
@@ -305,7 +305,10 @@ void cReader(int which)
     } 
     crLock->Release();
 
+    cwLock->Acquire();
     readerCount ++;
+    cwLock->Release();
+
     for (int i = 0; i < 50; ++i) // Do some work!
     {
         interrupt->OneTick();
@@ -322,15 +325,17 @@ void cReader(int which)
 void cWriter(int which)
 {
     printf("\t\t\t -%d- Try write...\n", which);
-    cwLock->Acquire();
-    if (readerCount > 0)
+    cwLock->Acquire(); 
+    if (readerCount > 0) // same quesgion, use sLock when modifiy readerCount
     {
         printf("\t\t\t -%d- Waiting wCondion...\n", which);
         wCondition->Wait(cwLock); //wait all reader finish!
     }  
-    crLock->Acquire(); // solotion 3
+
+    crLock->Acquire(); // solotion 3, use cLock when modifiy isWriting
     isWriting = true;
     crLock->Release(); 
+
     for (int i = 0; i < 50; ++i) // Do some work!
     {
         interrupt->OneTick();
@@ -340,7 +345,7 @@ void cWriter(int which)
     printf("\t\t\t -%d- Write %d into rwContent \n", which, which);
     printf("\t\t\t -%d- Broadcasting... \n", which);
     isWriting = false;
-    rCondition->Broadcast(crLock); // use  broad cast , reader first!
+    rCondition->Broadcast(crLock); // use  broadcast , reader first!
     cwLock->Release();
     if (readerCount == 0) // reader first!
     {
@@ -380,6 +385,23 @@ ThreadTest9()
 
     Thread *t5 = new Thread("reader 5");
     t5->Fork(cReader, 5);
+
+    for (int i = 0; i < 500; ++i) // Do some work!
+    {
+        interrupt->OneTick();
+    }
+
+    Thread *t6 = new Thread("reader 6");
+    t6->Fork(cReader, 6);
+
+    for (int i = 0; i < 500; ++i) // Do some work!
+    {
+        interrupt->OneTick();
+    }
+
+    Thread *t7 = new Thread("writer 7");
+    t7->Fork(cWriter, 7);
+
     currentThread -> Yield();
 }
 
