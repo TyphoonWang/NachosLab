@@ -15,14 +15,15 @@
 
 #include "copyright.h"
 #include "filesys.h"
+#include "noff.h"
 
 #define UserStackSize		1024 	// increase this as necessary!
 
 class AddrSpace {
   public:
-    AddrSpace(OpenFile *executable);	// Create an address space,
+    AddrSpace(char* filename);	// Create an address space,
 					// initializing it with the program
-					// stored in the file "executable"
+					// stored in the file "fileName"
     ~AddrSpace();			// De-allocate an address space
 
     void InitRegisters();		// Initialize user-level CPU registers,
@@ -30,12 +31,22 @@ class AddrSpace {
 
     void SaveState();			// Save/restore address space-specific
     void RestoreState();		// info on a context switch 
+   
+    bool isFinishInit() { return finishInit; } // if all AddrSpace is initialized in Memory or Swap area
+    bool initSpace(int virtualPageNum, int physicalPageNum);
 
   private:
-    TranslationEntry *pageTable;	// Assume linear page table translation
-					// for now!
-    unsigned int numPages;		// Number of pages in the virtual 
+    NoffHeader noffH;
+    OpenFile *executable;
+
+    int numPages;		// Number of pages in the virtual 
 					// address space
+    int   codePages; // Number of code pages (always save in file, load when necessary)
+    int   dataPages; // Number of data pages (first load from file, save in swap area)
+
+    
+
+    bool  finishInit; // if all AddrSpace is initialized in Memory or Swap area
 };
 
 #endif // ADDRSPACE_H

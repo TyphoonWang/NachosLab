@@ -18,7 +18,7 @@
 #include "copyright.h"
 #include "system.h"
 #include "addrspace.h"
-#include "noff.h"
+
 #ifdef HOST_SPARC
 #include <strings.h>
 #endif
@@ -60,9 +60,12 @@ SwapHeader (NoffHeader *noffH)
 //	"executable" is the file containing the object code to load into memory
 //----------------------------------------------------------------------
 
-AddrSpace::AddrSpace(OpenFile *executable)
+AddrSpace::AddrSpace(char* filename)
 {
-    NoffHeader noffH;
+    executable = fileSystem->Open(filename);
+    finishInit = FALSE;
+
+    
     unsigned int i, size;
 
     executable->ReadAt((char *)&noffH, sizeof(noffH), 0);
@@ -71,50 +74,27 @@ AddrSpace::AddrSpace(OpenFile *executable)
     	SwapHeader(&noffH);
     ASSERT(noffH.noffMagic == NOFFMAGIC);
 
-// how big is address space?
-    size = noffH.code.size + noffH.initData.size + noffH.uninitData.size 
-			+ UserStackSize;	// we need to increase the size
-						// to leave room for the stack
-    numPages = divRoundUp(size, PageSize);
-    size = numPages * PageSize;
-
-    ASSERT(numPages <= NumPhysPages);		// check we're not trying
-						// to run anything too big --
-						// at least until we have
-						// virtual memory
-
-    DEBUG('a', "Initializing address space, num pages %d, size %d\n", 
-					numPages, size);
-// first, set up the translation 
-    pageTable = new TranslationEntry[numPages];
-    for (i = 0; i < numPages; i++) {
-	pageTable[i].virtualPage = i;	// for now, virtual page # = phys page #
-	pageTable[i].physicalPage = i;
-	pageTable[i].valid = TRUE;
-	pageTable[i].use = FALSE;
-	pageTable[i].dirty = FALSE;
-	pageTable[i].readOnly = FALSE;  // if the code segment was entirely on 
-					// a separate page, we could set its 
-					// pages to be read-only
-    }
+    //  code pages
+    codePages = divRoundUp(noffH.code.size, PageSize);
     
-// zero out the entire address space, to zero the unitialized data segment 
-// and the stack segment
-    bzero(machine->mainMemory, size);
+    // how big is address space?
+    size = noffH.code.size + noffH.initData.size + noffH.uninitData.size 
+           + UserStackSize;    // we need to increase the size
+                       // to leave room for the stack
+                       // 
+    numPages = divRoundUp(size, PageSize);
 
-// then, copy in the code and data segments into memory
-    if (noffH.code.size > 0) {
-        DEBUG('a', "Initializing code segment, at 0x%x, size %d\n", 
-			noffH.code.virtualAddr, noffH.code.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.code.virtualAddr]),
-			noffH.code.size, noffH.code.inFileAddr);
-    }
-    if (noffH.initData.size > 0) {
-        DEBUG('a', "Initializing data segment, at 0x%x, size %d\n", 
-			noffH.initData.virtualAddr, noffH.initData.size);
-        executable->ReadAt(&(machine->mainMemory[noffH.initData.virtualAddr]),
-			noffH.initData.size, noffH.initData.inFileAddr);
-    }
+
+    DEBUG('a', "Calculate address space, num pages %d, size %d -- code pages %d\n", 
+                    numPages, size, codePages);
+    DEBUG('a', "code segment begin at %d ,  size %d\n", 
+                    noffH.code.virtualAddr, noffH.code.size);
+    DEBUG('a', "initData segment begin at %d ,  size %d\n", 
+                    noffH.initData.virtualAddr, noffH.initData.size);
+    DEBUG('a', "uninitData segment size %d\n", 
+                    noffH.uninitData.size);
+
+    return;
 
 }
 
@@ -125,8 +105,92 @@ AddrSpace::AddrSpace(OpenFile *executable)
 
 AddrSpace::~AddrSpace()
 {
-   delete pageTable;
+   if (executable != NULL)
+   {
+       delete executable;
+   }
 }
+
+
+// init a page from file, return if space is readable
+bool AddrSpace::initSpace(int virtualPageNum,int physicalPageNum)
+{
+    static int initedPages = 0; //count if all pages is initialized
+    // AddrSpace init from virtual addr, FOR LAZY LOADING OF CODE!!!!
+    static int initedFromAddr = noffH.code.virtualAddr;       
+
+
+    bool readOnly = FALSE;
+    int physicalAddr = physicalPageNum * PageSize;
+    int virtAddress  = virtualPageNum * PageSize;
+
+    printf("virtAddress = %d \t, initedFromAddr = %d\t \n",virtAddress, initedFromAddr);
+    if (virtAddress < noffH.code.size + noffH.initData.size) // still init, page align
+    {
+        // init a code page
+        if (noffH.code.size > 0 && initedFromAddr < noffH.code.virtualAddr + noffH.code.size)
+        {
+            int size = PageSize;
+            int remain = noffH.code.virtualAddr + noffH.code.size - initedFromAddr;
+            if (remain < size)
+            {
+                size = remain;
+            }
+            DEBUG('a', "-------Initializing code segment, visualPageNum %d\t, physicalPageNum %d \n", 
+                virtualPageNum, physicalPageNum);
+            printf("reading code, physicalAddr %d, size %d, fileAddr %d \n",
+                                physicalAddr,      size    , noffH.code.inFileAddr + virtAddress);
+            executable->ReadAt(&(machine->mainMemory[physicalAddr]),
+                               size, noffH.code.inFileAddr + virtAddress);
+            initedFromAddr += PageSize; // asume code and initdata not in the same page!
+            initedPages ++;
+            readOnly = FALSE; // WHY CODE AND DATA IN THE SAME PAGE !!!!!!
+            printf("reading code finished\n");
+            printf("updated initedFromAddr  %d\n", initedFromAddr);
+        }
+        // init a data page
+        else if (noffH.initData.size > 0) {
+           int size = PageSize;
+           int remain = noffH.initData.virtualAddr + noffH.initData.size - initedFromAddr;
+           if (remain < size)
+            {
+                size = remain;
+            }
+           printf("reading data\n");
+           DEBUG('a', "-------Initializing data segment, visualPageNum %d\t, physicalPageNum %d \n", 
+                virtualPageNum, physicalPageNum);
+            executable->ReadAt(&(machine->mainMemory[physicalAddr]),
+                                size, noffH.initData.inFileAddr + virtAddress);
+
+            readOnly = FALSE;
+            initedPages++;
+        }
+        else {
+            DEBUG('a', "-------Initializing EMPTY segment, visualPageNum %d\t, physicalPageNum %d \n", 
+                virtualPageNum, physicalPageNum);
+            readOnly = FALSE;
+        }
+    }
+    else
+    {
+        DEBUG('a', "-------   Initializing EMPTY segment  .....   ------------------ \n");
+        readOnly = FALSE;
+    }
+
+    if (initedPages == numPages)
+    {
+        DEBUG('a', "------- !!!!!!! Initialize Finish !!!!!!! -------------- \n");
+        finishInit = TRUE;
+    }
+
+    if (finishInit && executable != NULL)
+    {
+        delete executable;
+    }   
+
+    return readOnly;
+}
+
 
 //----------------------------------------------------------------------
 // AddrSpace::InitRegisters
@@ -181,6 +245,7 @@ void AddrSpace::SaveState()
 
 void AddrSpace::RestoreState() 
 {
-    machine->pageTable = pageTable;
+    // machine->pageTable = pageTable;
+    // Load TLB instead
     machine->pageTableSize = numPages;
 }
