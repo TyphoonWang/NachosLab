@@ -108,6 +108,7 @@ AddrSpace::~AddrSpace()
    if (executable != NULL)
    {
        delete executable;
+       executable = NULL;
    }
 }
 
@@ -116,25 +117,25 @@ AddrSpace::~AddrSpace()
 bool AddrSpace::initSpace(int virtualPageNum,int physicalPageNum)
 {
     static int initedPages = 0; //count if all pages is initialized
-    // AddrSpace init from virtual addr, FOR LAZY LOADING OF CODE!!!!
-    static int initedFromAddr = noffH.code.virtualAddr;       
+    // AddrSpace init from virtual addr, FOR LAZY LOADING OF CODE!!!!  
 
 
     bool readOnly = FALSE;
     int physicalAddr = physicalPageNum * PageSize;
     int virtAddress  = virtualPageNum * PageSize;
+    bzero(&(machine->mainMemory[physicalAddr]),PageSize);
 
-    printf("virtAddress = %d \t, initedFromAddr = %d\t \n",virtAddress, initedFromAddr);
-    if (virtAddress < noffH.code.size + noffH.initData.size) // still init, page align
+    if (virtAddress < noffH.code.virtualAddr + noffH.code.size + noffH.initData.size) // still init, page align
     {
         // init a code page
-        if (noffH.code.size > 0 && initedFromAddr < noffH.code.virtualAddr + noffH.code.size)
+        if (noffH.code.size > 0 && virtAddress < noffH.code.virtualAddr + noffH.code.size)
         {
             int size = PageSize;
-            int remain = noffH.code.virtualAddr + noffH.code.size - initedFromAddr;
+            int remain = noffH.code.virtualAddr + noffH.code.size - virtAddress;
             if (remain < size)
             {
                 size = remain;
+                printf(" ============================================================remain < size\n" );
             }
             DEBUG('a', "-------Initializing code segment, visualPageNum %d\t, physicalPageNum %d \n", 
                 virtualPageNum, physicalPageNum);
@@ -142,16 +143,14 @@ bool AddrSpace::initSpace(int virtualPageNum,int physicalPageNum)
                                 physicalAddr,      size    , noffH.code.inFileAddr + virtAddress);
             executable->ReadAt(&(machine->mainMemory[physicalAddr]),
                                size, noffH.code.inFileAddr + virtAddress);
-            initedFromAddr += PageSize; // asume code and initdata not in the same page!
-            initedPages ++;
+
             readOnly = FALSE; // WHY CODE AND DATA IN THE SAME PAGE !!!!!!
             printf("reading code finished\n");
-            printf("updated initedFromAddr  %d\n", initedFromAddr);
         }
         // init a data page
         else if (noffH.initData.size > 0) {
            int size = PageSize;
-           int remain = noffH.initData.virtualAddr + noffH.initData.size - initedFromAddr;
+           int remain = noffH.initData.virtualAddr + noffH.initData.size - virtAddress;
            if (remain < size)
             {
                 size = remain;
@@ -161,31 +160,32 @@ bool AddrSpace::initSpace(int virtualPageNum,int physicalPageNum)
                 virtualPageNum, physicalPageNum);
             executable->ReadAt(&(machine->mainMemory[physicalAddr]),
                                 size, noffH.initData.inFileAddr + virtAddress);
-
-            readOnly = FALSE;
-            initedPages++;
         }
         else {
-            DEBUG('a', "-------Initializing EMPTY segment, visualPageNum %d\t, physicalPageNum %d \n", 
+            DEBUG('a', "-------WARRNING, Initializing EMPTY segment, visualPageNum %d\t, physicalPageNum %d \n", 
                 virtualPageNum, physicalPageNum);
-            readOnly = FALSE;
         }
     }
     else
     {
-        DEBUG('a', "-------   Initializing EMPTY segment  .....   ------------------ \n");
+        DEBUG('a', "-------   Initializing EMPTY segment , visualPageNum %d\t, physicalPageNum %d \n",
+            virtualPageNum, physicalPageNum);
         readOnly = FALSE;
     }
-
+    
+    
+     initedPages++;
     if (initedPages == numPages)
     {
-        DEBUG('a', "------- !!!!!!! Initialize Finish !!!!!!! -------------- \n");
+        printf("------- !!!!!!! InitializeFinish !!!!!!! -------------- \n");
         finishInit = TRUE;
     }
 
     if (finishInit && executable != NULL)
     {
+        printf("DELETE executable!\n");
         delete executable;
+        executable = NULL;
     }   
 
     return readOnly;

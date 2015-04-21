@@ -57,6 +57,11 @@ ExceptionHandler(ExceptionType which)
 		DEBUG('a', "Shutdown, initiated by user program.\n");
    		interrupt->Halt();
     } 
+    else if((which == SyscallException) && (type == SC_Exit)) {
+        int arg1 = machine->ReadRegister(4);
+        printf("[User program] Exit: %d\n", arg1);
+        interrupt->Halt();
+    }
     else if(which == PageFaultException) {
     	int addr = machine->ReadRegister(BadVAddrReg);
     	pageManager->handlePageFault(addr);

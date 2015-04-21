@@ -13,6 +13,7 @@ PageManager::PageManager()
 	for (int i = 0; i < NumPhysPages; ++i)
 	{
 		invertedPageTable[i].valid = FALSE;
+		invertedPageTable[i].hit = 0;
 	}
 }
 
@@ -32,23 +33,27 @@ int PageManager::allocatePage(int virtAddr,bool isReadOnly)
 	invertedPageTable[emptyppn].use   = FALSE;
 	invertedPageTable[emptyppn].dirty = FALSE;
 	invertedPageTable[emptyppn].readOnly = isReadOnly;
+	invertedPageTable[emptyppn].valid = TRUE;
 }
 
 void PageManager::handlePageFault(int virtAddress)
 {
+	printf("PageFault %d\n",virtAddress);
 	DEBUG('a', "### PageManager: handlePageFault,virtualAddr = %d \n", 
                     virtAddress);
 	unsigned int vpn = getVPN(virtAddress);
 	unsigned int pid = getPID();
 	int ppnFrom = hashVPN2PPN(vpn, pid);
-	
+	//printTable();
 	int finded = findPage(ppnFrom,vpn,pid);
-	DEBUG('a', "### PageManager: page finded = %d \n", 
-                    finded);
+	DEBUG('a', "### PageManager: page finded = %d ,for vpn = %d\n", 
+                    finded, vpn);
+	stats->numPageFaults++;
+
 	if (finded >= 0) // PageFault case 1: in memory but not in TLB
 	{
 		// load page entry to tlb 
-		updateTLB(finded,vpn);
+		updateTLB(finded,vpn);	
 	} 
 	else 
 	{   // PageFault case 2: not in memory
@@ -58,7 +63,7 @@ void PageManager::handlePageFault(int virtAddress)
 		if (finded >= 0)
 		{
 			// swap from disk !
-			DEBUG('a', "### PageManager: swap from disk, finded PPN = %d \n", 
+			DEBUG('a', "### PageManager: swap from disk, finded swapPPN = %d \n", 
                     finded);
 			swapUpPage(vpn,pid,finded);
 		}
@@ -66,8 +71,8 @@ void PageManager::handlePageFault(int virtAddress)
 		{
 			finded = findEmptyPage(ppnFrom);
 			AddrSpace *space = currentThread->space;
-			DEBUG('a', "### PageManager: initSpace from file, finded PPN = %d \n", 
-                    finded);
+			DEBUG('a', "### PageManager: Init Space from file, vpn = %d, finded PPN = %d \n", 
+                    vpn, finded);
 			bool readOnly = space->initSpace(vpn,finded);
 			invertedPageTable[finded].virtualPage = vpn;
 			invertedPageTable[finded].pid = pid;
@@ -81,31 +86,54 @@ void PageManager::handlePageFault(int virtAddress)
 	//printTable();
 }
 
+ void PageManager::clearTLB() {
+ 	DEBUG('a', "### PageManager::clearTLB...\n");
+ 	for (int i = 0; i < TLBSize; ++i)
+	{
+		machine->tlb[i].valid = FALSE;
+	}
+ }
+
 // ------------------------------- PRIVATE ---------------------------------------------
 // 
 TranslationEntry * PageManager::tlbToBeReplace()
 {
-	// random swap ...
-	static int i = 0;
-	i = i + 3;
-	i %= TLBSize;
-	//printf("Find TLB TO BE REPLACE %d\n", i);
-	return &(machine->tlb[i]);
+	int minHit = 99999;
+	int oldest = 0;
+	for (int i = 0; i < TLBSize; ++i)
+	{
+		if (machine->tlb[i].valid == FALSE)
+		{
+			oldest = i;
+			break;
+		}
+		if (machine->tlb[i].hit < minHit)
+		{
+			minHit = machine->tlb[i].hit;
+			oldest = i;
+		}
+	}
+	for (int i = 0; i < TLBSize; ++i)
+	{
+		machine->tlb[i].hit = 0;
+	}
+	//printf("PageManager TLB to be Replace %d\n", oldest);
+	return &(machine->tlb[oldest]);
 }
 
 void PageManager::updateTLB(int findedppn,int vpn)
 {
-	DEBUG('a', "### PageManager::updateTLB,findedppn = %d,\t vpn = %d \n", 
+	DEBUG('a', "### PageManager::updateTLB,finded ppn = %d,\t vpn = %d \n", 
                     findedppn, vpn);
 	TranslationEntry *oldTLB; // tlb enrty to be replaced
 	oldTLB = tlbToBeReplace();
-
 	oldTLB->valid = TRUE;
 	oldTLB->virtualPage= vpn;
 	oldTLB->physicalPage = findedppn;
 	oldTLB->use = 0;
 	oldTLB->dirty = 0;
 	oldTLB->readOnly = invertedPageTable[findedppn].readOnly;
+	invertedPageTable[findedppn].hit ++;
 }
 
 int PageManager::findPage(int from,int vpn,int pid)
@@ -116,6 +144,7 @@ int PageManager::findPage(int from,int vpn,int pid)
 			invertedPageTable[i].valid && 
 			invertedPageTable[i].pid == pid)
 		{
+			invertedPageTable[i].hit ++;
 			return i;
 		}
 	}
@@ -125,6 +154,7 @@ int PageManager::findPage(int from,int vpn,int pid)
 			invertedPageTable[i].valid && 
 			invertedPageTable[i].pid == pid)
 		{
+			invertedPageTable[i].hit ++;
 			return i;
 		}
 	}
@@ -133,6 +163,8 @@ int PageManager::findPage(int from,int vpn,int pid)
 
 int PageManager::findPageInSwap(int from,int vpn,int pid)
 {
+	DEBUG('a', "### PageManager finding in swap area.... , vpn = %d, pid = %d \n"
+                    ,vpn,pid);
 	for (int i = from; i < SWAPPages; ++i)
 	{
 		if (swapPageTable[i].virtualPage == vpn && 
@@ -175,17 +207,39 @@ int PageManager::findEmptyPage(int from)
 	return swapDownPage(); //not found swap a page down and return a valid page
 }
 
+// should NEVER swap down current code page!!
 int PageManager::pageToBeSwapDown()
 {
-	static int i = 0;
-	i = i + 3;
-	i %= NumPhysPages;
-	return i;
+	updateHitFromTLB();
+	int currentVPA = machine->ReadRegister(PCReg);
+	currentVPN = currentVPA / PageSize;
+	printf("PageManager page To Be Swap Down --- currentVPN %d, currentVPA %d \n",currentVPN,currentVPA);
+	int minHit = 99999;
+	int oldest = 0;
+	for (int i = 0; i < NumPhysPages; ++i)
+	{
+		if (invertedPageTable[i].valid == FALSE)
+		{
+			oldest = i;
+			break;
+		}
+		if (invertedPageTable[i].hit < minHit && invertedPageTable[i].virtualPage != currentVPN )
+		{
+			minHit = invertedPageTable[i].hit;
+			oldest = i;
+		}
+	}
+	for (int i = 0; i < NumPhysPages; ++i)
+	{
+		invertedPageTable[i].hit = 0;
+	}
+	printf("PageManager page to be swap down %d\n", oldest);
+	return oldest;
 }
 
 int PageManager::swapDownPage()
 {
-	DEBUG('a', "================================PageManage swap Down Page ... \n");
+	DEBUG('a', "================================PageManage swap Down Page ...  =========================\n");
 	int ppn = pageToBeSwapDown();
 	int physicalAddr = ppn * PageSize;
 	for (int i = 0; i < SWAPPages; ++i) // find a swap area
@@ -199,8 +253,12 @@ int PageManager::swapDownPage()
 			swapPageTable[i].pid = invertedPageTable[ppn].pid;
 			swapPageTable[i].virtualPage = invertedPageTable[ppn].virtualPage;
 			swapPageTable[i].readOnly = invertedPageTable[ppn].readOnly;
-		}
-		return ppn;
+			DEBUG('a', "===============================PageManage swap Down Page ppn = %d vpn = %d to swapPageTable %d ... \n",
+				ppn,invertedPageTable[ppn].virtualPage,i);
+			invertedPageTable[ppn].valid = FALSE;
+			clearTLB();
+			return ppn;
+		}	
 	}
 	// should never reach here!
 	ASSERT(FALSE);
@@ -209,9 +267,10 @@ int PageManager::swapDownPage()
 
 void PageManager::swapUpPage(int vpn, int pid, int swapPage)
 {
-	DEBUG('a', "==================================PageManage swap UP Page ... \n");
 	int ppnFrom = hashVPN2PPN(vpn, pid);
 	int finded = findEmptyPage(ppnFrom); // find an empty page in memory
+	DEBUG('a', "==================================PageManage swap Up Page VPN = %d , swap page = %d , ppn = %d ... \n ===================================",
+				vpn,swapPage, finded);
 	int physicalAddr = finded * PageSize;
 	int inSwapAddr = swapPage * PageSize;
 	swapFile->ReadAt(&(machine->mainMemory[physicalAddr]),PageSize, inSwapAddr);
@@ -221,8 +280,24 @@ void PageManager::swapUpPage(int vpn, int pid, int swapPage)
 	invertedPageTable[finded].pid = pid;
 	invertedPageTable[finded].use = FALSE;
 	invertedPageTable[finded].dirty = FALSE;
+	invertedPageTable[finded].valid = TRUE;
 	return;
 }
+
+void PageManager::updateHitFromTLB(){
+	for (int i = 0; i < TLBSize; ++i)
+	{
+		if (machine->tlb[i].valid){
+			int ppn = machine->tlb[i].physicalPage;
+			int vpn =  machine->tlb[i].virtualPage;
+			if (invertedPageTable[ppn].valid && invertedPageTable[ppn].virtualPage == vpn)
+			{
+				invertedPageTable[ppn].hit += machine->tlb[i].hit;
+			}
+		}
+	}
+}
+
 
 int PageManager::hashVPN2PPN(unsigned int vpn,unsigned int pid) // hash based on visual addredd and thread id
 {

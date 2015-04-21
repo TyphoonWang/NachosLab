@@ -25,6 +25,8 @@ class InvertedPageEntry {
 			          // page is modified.
              
     int  pid;  // thread id
+
+    int  hit; // save hit time, hit min = most not used page
 };
 
 #define SWAPPages (NumPhysPages * 10)
@@ -43,6 +45,8 @@ public:
     
     void handlePageFault(int virtAddress);
 
+    void clearTLB();
+
 private:
     OpenFile *swapFile;
     int findEmptyPage(int from);
@@ -58,8 +62,12 @@ private:
     TranslationEntry *tlbToBeReplace();
     void updateTLB(int findedppn,int vpn); // findedppn != physicalPage
 
+    void updateHitFromTLB();
+    
     unsigned int getVPN(int addr);
     unsigned int getPID();
+
+    unsigned int currentVPN;
 
     void printTable(); //For debug
 };

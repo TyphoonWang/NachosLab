@@ -104,7 +104,7 @@ class Thread {
 						// overflowed its stack
     void setStatus(ThreadStatus st) { status = st; }
     char* getName() { return (name); }
-
+    int getPid() { return pid; }
     // set priority before fork
     // changed priority will be effective immidiatly
     void setPriority(int prio) ;
