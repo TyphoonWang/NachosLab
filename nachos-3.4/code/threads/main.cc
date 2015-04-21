@@ -15,7 +15,10 @@
 //              -n <network reliability> -m <machine id>
 //              -o <other machine id>
 //              -z
-//
+//              
+//              
+//		-q Thread test
+//		
 //    -d causes certain debugging messages to be printed (cf. utility.h)
 //    -rs causes Yield to occur at random (but repeatable) spots
 //    -z prints the copyright message
@@ -87,25 +90,18 @@ main(int argc, char **argv)
     DEBUG('t', "Entering main");
     (void) Initialize(argc, argv);
     
+
+
+    for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
+		argCount = 1;
 #ifdef THREADS
-    for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
-      argCount = 1;
-      switch (argv[0][1]) {
-      case 'q':
-        testnum = atoi(argv[1]);
-        argCount++;
-        break;
-      default:
-        testnum = 1;
-        break;
-      }
-    }
-
-    ThreadTest();
+		if (!strcmp(*argv, "-q")){
+			ASSERT(argc > 1);
+			testnum = atoi(argv[1]);
+			ThreadTest();
+			argCount = 2;
+		}
 #endif
-
-    for (argc--, argv++; argc > 0; argc -= argCount, argv += argCount) {
-	argCount = 1;
         if (!strcmp(*argv, "-z"))               // print copyright
             printf (copyright);
 #ifdef USER_PROGRAM

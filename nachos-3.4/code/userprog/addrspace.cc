@@ -105,11 +105,14 @@ AddrSpace::AddrSpace(char* filename)
 
 AddrSpace::~AddrSpace()
 {
+    printf("~AddrSpace DELETE SPACE! \n");
    if (executable != NULL)
    {
+        printf("~AddrSpace DELETE executable! \n");
        delete executable;
        executable = NULL;
    }
+   pageManager->deallocPage(currentThread->getPid());
 }
 
 
@@ -174,19 +177,11 @@ bool AddrSpace::initSpace(int virtualPageNum,int physicalPageNum)
     }
     
     
-     initedPages++;
+    initedPages++;
     if (initedPages == numPages)
     {
-        printf("------- !!!!!!! InitializeFinish !!!!!!! -------------- \n");
         finishInit = TRUE;
     }
-
-    if (finishInit && executable != NULL)
-    {
-        printf("DELETE executable!\n");
-        delete executable;
-        executable = NULL;
-    }   
 
     return readOnly;
 }
@@ -247,5 +242,5 @@ void AddrSpace::RestoreState()
 {
     // machine->pageTable = pageTable;
     // Load TLB instead
-    machine->pageTableSize = numPages;
+    pageManager->clearTLB();
 }

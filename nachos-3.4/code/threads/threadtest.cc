@@ -405,6 +405,30 @@ ThreadTest9()
     currentThread -> Yield();
 }
 
+#ifdef USER_PROGRAM
+#include "progtest.h"
+void userprogramTestSort(int which)
+{
+    StartProcess("../test/sort");
+}
+
+void userprogramTestSortMore(int which)
+{
+    StartProcess("../test/sortMore");
+}
+
+void
+ThreadTest10()
+{
+    DEBUG('t', "Entering ThreadTest10"); 
+    Thread *t0 = new Thread("Fork sort");
+    t0->Fork(userprogramTestSort, 0);
+    Thread *t1 = new Thread("Fork sortMore");
+    t1->Fork(userprogramTestSortMore, 0);
+    StartProcess("../test/matmult");
+}
+#endif
+
 //----------------------------------------------------------------------
 // ThreadTest
 // 	Invoke a test routine.
@@ -441,7 +465,11 @@ ThreadTest()
     case 9: // reader / writer problem via condition var
     ThreadTest9();
     break;
-
+    case 10: // Run 2 User program!
+    #ifdef USER_PROGRAM
+    ThreadTest10();
+    break;
+    #endif
     default:
 	printf("No test specified.\n");
 	break;

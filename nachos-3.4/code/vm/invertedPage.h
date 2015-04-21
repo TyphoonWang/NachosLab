@@ -42,7 +42,7 @@ public:
     ~PageManager();
 
     int allocatePage(int virtAddr,bool isReadOnly);
-    
+    void deallocPage(int pid);
     void handlePageFault(int virtAddress);
 
     void clearTLB();

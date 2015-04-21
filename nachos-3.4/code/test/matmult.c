@@ -10,7 +10,7 @@
 #include "syscall.h"
 
 #define Dim 	20	/* sum total of the arrays doesn't fit in 
-			 * physical memory 
+			 * physical memory  20
 			 */
 
 int A[Dim][Dim];
@@ -34,5 +34,5 @@ main()
             for (k = 0; k < Dim; k++)
 		 C[i][j] += A[i][k] * B[k][j];
 
-    Exit(C[Dim-1][Dim-1]);		/* and then we're done */
+    Exit(C[Dim-1][Dim-1]);		/* and then we're done */ // Dim = 5,80 ; Dim = 20,7220
 }

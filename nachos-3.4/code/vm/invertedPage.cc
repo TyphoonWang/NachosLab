@@ -19,6 +19,7 @@ PageManager::PageManager()
 
 PageManager::~PageManager()
 {
+	printf("Swap file DLETE!!!!!!\n");
 	delete swapFile;
 }
 
@@ -34,6 +35,24 @@ int PageManager::allocatePage(int virtAddr,bool isReadOnly)
 	invertedPageTable[emptyppn].dirty = FALSE;
 	invertedPageTable[emptyppn].readOnly = isReadOnly;
 	invertedPageTable[emptyppn].valid = TRUE;
+}
+
+void PageManager::deallocPage(int pid)
+{
+	for (int i = 0; i < NumPhysPages; ++i)
+	{
+		if (invertedPageTable[i].pid == pid)
+		{
+			invertedPageTable[i].valid = FALSE;
+		}
+	}
+	for (int i = 0; i < SWAPPages; ++i)
+	{
+		if (swapPageTable[i].pid == pid)
+		{
+			swapPageTable[i].valid = FALSE;
+		}
+	}
 }
 
 void PageManager::handlePageFault(int virtAddress)
