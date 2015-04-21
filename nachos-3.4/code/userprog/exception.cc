@@ -59,8 +59,7 @@ ExceptionHandler(ExceptionType which)
     } 
     else if((which == SyscallException) && (type == SC_Exit)) {
         int arg1 = machine->ReadRegister(4);
-        printf("[User program] Exit: %d\n", arg1);
-        interrupt->Halt();
+        CExit(arg1);
     }
     else if(which == PageFaultException) {
     	int addr = machine->ReadRegister(BadVAddrReg);

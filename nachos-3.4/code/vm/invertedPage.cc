@@ -38,7 +38,6 @@ int PageManager::allocatePage(int virtAddr,bool isReadOnly)
 
 void PageManager::handlePageFault(int virtAddress)
 {
-	printf("PageFault %d\n",virtAddress);
 	DEBUG('a', "### PageManager: handlePageFault,virtualAddr = %d \n", 
                     virtAddress);
 	unsigned int vpn = getVPN(virtAddress);
@@ -213,7 +212,7 @@ int PageManager::pageToBeSwapDown()
 	updateHitFromTLB();
 	int currentVPA = machine->ReadRegister(PCReg);
 	currentVPN = currentVPA / PageSize;
-	printf("PageManager page To Be Swap Down --- currentVPN %d, currentVPA %d \n",currentVPN,currentVPA);
+	DEBUG('a', "PageManager page To Be Swap Down --- currentVPN %d, currentVPA %d \n",currentVPN,currentVPA);
 	int minHit = 99999;
 	int oldest = 0;
 	for (int i = 0; i < NumPhysPages; ++i)
@@ -233,7 +232,7 @@ int PageManager::pageToBeSwapDown()
 	{
 		invertedPageTable[i].hit = 0;
 	}
-	printf("PageManager page to be swap down %d\n", oldest);
+	DEBUG('a', "PageManager page to be swap down %d\n", oldest);
 	return oldest;
 }
 

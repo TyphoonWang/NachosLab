@@ -135,17 +135,17 @@ bool AddrSpace::initSpace(int virtualPageNum,int physicalPageNum)
             if (remain < size)
             {
                 size = remain;
-                printf(" ============================================================remain < size\n" );
+                DEBUG('a',"[     now remain code < page size    ]\n" );
             }
             DEBUG('a', "-------Initializing code segment, visualPageNum %d\t, physicalPageNum %d \n", 
                 virtualPageNum, physicalPageNum);
-            printf("reading code, physicalAddr %d, size %d, fileAddr %d \n",
+            DEBUG('a',"reading code, physicalAddr %d, size %d, fileAddr %d \n",
                                 physicalAddr,      size    , noffH.code.inFileAddr + virtAddress);
             executable->ReadAt(&(machine->mainMemory[physicalAddr]),
                                size, noffH.code.inFileAddr + virtAddress);
 
-            readOnly = FALSE; // WHY CODE AND DATA IN THE SAME PAGE !!!!!!
-            printf("reading code finished\n");
+            readOnly = FALSE; //  CODE AND DATA IN THE SAME PAGE ?!
+            DEBUG('a',"reading a code page finished \n");
         }
         // init a data page
         else if (noffH.initData.size > 0) {
