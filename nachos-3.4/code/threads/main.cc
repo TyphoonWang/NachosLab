@@ -141,6 +141,14 @@ main(int argc, char **argv)
             fileSystem->Print();
 	} else if (!strcmp(*argv, "-t")) {	// performance test
             PerformanceTest();
+	} else if (!strcmp(*argv, "-mkdir")) {	// make a dir
+        ASSERT(argc > 1);
+	    fileSystem->CreateDir(*(argv + 1));
+	    argCount = 2;
+	}	else if (!strcmp(*argv, "-cd")) {	// Change Dir
+        ASSERT(argc > 1);
+	    fileSystem->ChangeDir(*(argv + 1));
+	    argCount = 2;
 	}
 #endif // FILESYS
 #ifdef NETWORK

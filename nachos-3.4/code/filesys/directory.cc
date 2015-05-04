@@ -76,7 +76,9 @@ Directory::FetchFrom(OpenFile *file)
 void
 Directory::WriteBack(OpenFile *file)
 {
+    DEBUG('f',"Directory::WriteBack...\n");
     (void) file->WriteAt((char *)table, tableSize * sizeof(DirectoryEntry), 0);
+    DEBUG('f',"Directory::WriteBack Finished\n");
 }
 
 //----------------------------------------------------------------------
@@ -170,8 +172,15 @@ void
 Directory::List()
 {
    for (int i = 0; i < tableSize; i++)
-	if (table[i].inUse)
-	    printf("%s\n", table[i].name);
+	   if (table[i].inUse)
+       {
+           FileHeader *hdr = new FileHeader;
+           int s = table[i].sector;
+           hdr->FetchFrom(s);
+           int type = hdr->GetFileType();
+	       printf("%s - %c\n", table[i].name,(char)type);
+       }
+   
 }
 
 //----------------------------------------------------------------------

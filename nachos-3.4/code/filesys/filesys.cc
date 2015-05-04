@@ -46,10 +46,10 @@
 #include "copyright.h"
 
 #include "disk.h"
-#include "bitmap.h"
 #include "directory.h"
 #include "filehdr.h"
 #include "filesys.h"
+#include "bitmap.h"
 
 // Sectors containing the file headers for the bitmap of free sectors,
 // and the directory of files.  These file headers are placed in well-known 
@@ -80,66 +80,79 @@
 FileSystem::FileSystem(bool format)
 { 
     DEBUG('f', "Initializing the file system.\n");
+    time_t now = time(0);
+    tm* timePtr = localtime(&now);   
+    DEBUG('f',"Current Date: %d-%d-%d  %d:%d:%d \n",
+        timePtr->tm_year + 1900, timePtr->tm_mon, timePtr->tm_mday, timePtr->tm_hour, timePtr->tm_min, timePtr->tm_sec);
+
     if (format) {
         BitMap *freeMap = new BitMap(NumSectors);
         Directory *directory = new Directory(NumDirEntries);
-	FileHeader *mapHdr = new FileHeader;
-	FileHeader *dirHdr = new FileHeader;
+	    FileHeader *mapHdr = new FileHeader;
+	    FileHeader *dirHdr = new FileHeader;
 
-        DEBUG('f', "Formatting the file system.\n");
+        DEBUG('f', "--- Formatting the file system.\n");
+        DEBUG('f', "NumDirect %d\n", NumDirect);
+        // First, allocate space for FileHeaders for the directory and bitmap
+        // (make sure no one else grabs these!)
+    	freeMap->Mark(FreeMapSector);	    
+    	freeMap->Mark(DirectorySector);
 
-    // First, allocate space for FileHeaders for the directory and bitmap
-    // (make sure no one else grabs these!)
-	freeMap->Mark(FreeMapSector);	    
-	freeMap->Mark(DirectorySector);
+        // Second, allocate space for the data blocks containing the contents
+        // of the directory and bitmap files.  There better be enough space!
 
-    // Second, allocate space for the data blocks containing the contents
-    // of the directory and bitmap files.  There better be enough space!
+    	ASSERT(mapHdr->Allocate(freeMap, FreeMapFileSize));
+    	ASSERT(dirHdr->Allocate(freeMap, DirectoryFileSize));
 
-	ASSERT(mapHdr->Allocate(freeMap, FreeMapFileSize));
-	ASSERT(dirHdr->Allocate(freeMap, DirectoryFileSize));
-
-    // Flush the bitmap and directory FileHeaders back to disk
-    // We need to do this before we can "Open" the file, since open
-    // reads the file header off of disk (and currently the disk has garbage
-    // on it!).
+        // Flush the bitmap and directory FileHeaders back to disk
+        // We need to do this before we can "Open" the file, since open
+        // reads the file header off of disk (and currently the disk has garbage
+        // on it!).
 
         DEBUG('f', "Writing headers back to disk.\n");
-	mapHdr->WriteBack(FreeMapSector);    
-	dirHdr->WriteBack(DirectorySector);
+    	mapHdr->WriteBack(FreeMapSector);    
+    	dirHdr->WriteBack(DirectorySector);
 
-    // OK to open the bitmap and directory files now
-    // The file system operations assume these two files are left open
-    // while Nachos is running.
+        directory->fatherDirSector = DirectorySector; //root's father is root
+        currentDirSector = DirectorySector;
 
+        // OK to open the bitmap and directory files now
+        // The file system operations assume these two files are left open
+        // while Nachos is running.
+        DEBUG('f', "Opening the bitmap and directory files ... \n");
         freeMapFile = new OpenFile(FreeMapSector);
         directoryFile = new OpenFile(DirectorySector);
      
-    // Once we have the files "open", we can write the initial version
-    // of each file back to disk.  The directory at this point is completely
-    // empty; but the bitmap has been changed to reflect the fact that
-    // sectors on the disk have been allocated for the file headers and
-    // to hold the file data for the directory and bitmap.
+        // Once we have the files "open", we can write the initial version
+        // of each file back to disk.  The directory at this point is completely
+        // empty; but the bitmap has been changed to reflect the fact that
+        // sectors on the disk have been allocated for the file headers and
+        // to hold the file data for the directory and bitmap.
 
-        DEBUG('f', "Writing bitmap and directory back to disk.\n");
-	freeMap->WriteBack(freeMapFile);	 // flush changes to disk
-	directory->WriteBack(directoryFile);
+        DEBUG('f', "--- Writing bitmap and directory back to disk.\n");
+        DEBUG('f', "Writing freeMapFile back to disk.\n");
+    	freeMap->WriteBack(freeMapFile);	 // flush changes to disk
+        DEBUG('f', "Writing directoryFile back to disk.\n");
+    	directory->WriteBack(directoryFile);
 
-	if (DebugIsEnabled('f')) {
-	    freeMap->Print();
-	    directory->Print();
+    	if (DebugIsEnabled('f')) {
+             DEBUG('f', "--- Printing freeMap and directory .. \n");
+    	    freeMap->Print();
+    	    directory->Print();
 
-        delete freeMap; 
-	delete directory; 
-	delete mapHdr; 
-	delete dirHdr;
-	}
+            delete freeMap; 
+        	delete directory; 
+        	delete mapHdr; 
+        	delete dirHdr;
+        }
     } else {
     // if we are not formatting the disk, just open the files representing
     // the bitmap and directory; these are left open while Nachos is running
+        DEBUG('f', "--- Opening freeMapFile and directoryFile...\n");
         freeMapFile = new OpenFile(FreeMapSector);
         directoryFile = new OpenFile(DirectorySector);
     }
+    DEBUG('f', "--- Finish File Sys Init \n");
 }
 
 //----------------------------------------------------------------------
@@ -186,32 +199,126 @@ FileSystem::Create(char *name, int initialSize)
     directory->FetchFrom(directoryFile);
 
     if (directory->Find(name) != -1)
-      success = FALSE;			// file is already in directory
+        success = FALSE;			// file is already in directory
     else {	
         freeMap = new BitMap(NumSectors);
         freeMap->FetchFrom(freeMapFile);
         sector = freeMap->Find();	// find a sector to hold the file header
-    	if (sector == -1) 		
-            success = FALSE;		// no free block for file header 
+
+        if (sector == -1) 		
+                success = FALSE;		// no free block for file header 
         else if (!directory->Add(name, sector))
-            success = FALSE;	// no space in directory
-	else {
-    	    hdr = new FileHeader;
-	    if (!hdr->Allocate(freeMap, initialSize))
-            	success = FALSE;	// no space on disk for data
-	    else {	
-	    	success = TRUE;
-		// everthing worked, flush all changes back to disk
-    	    	hdr->WriteBack(sector); 		
-    	    	directory->WriteBack(directoryFile);
-    	    	freeMap->WriteBack(freeMapFile);
-	    }
+                success = FALSE;	// no space in directory
+        else {
+        	hdr = new FileHeader;
+    	    if (!hdr->Allocate(freeMap, initialSize))
+                	success = FALSE;	// no space on disk for data
+    	    else {	
+    	    	success = TRUE;
+                DEBUG('f', "Creating file :WriteBack hdr ....\n");
+    		// everthing worked, flush all changes back to disk
+        	    hdr->WriteBack(sector); 	
+                DEBUG('f', "Creating file :WriteBack dir ....\n");	
+        	    directory->WriteBack(directoryFile);
+                DEBUG('f', "Creating file :WriteBack freeMap ....\n");
+        	    freeMap->WriteBack(freeMapFile);
+    	    }
             delete hdr;
-	}
+    	}
+
         delete freeMap;
     }
     delete directory;
     return success;
+}
+
+OpenFile* 
+FileSystem::GetFreeMapFile() // who get free map need delete
+{
+    return freeMapFile;
+}
+
+bool
+FileSystem::CreateDir(char *name)
+{
+    Directory *directory;
+    BitMap *freeMap;
+    FileHeader *hdr;
+    int sector;
+    bool success;
+
+    int initialSize = DirectoryFileSize;
+    DEBUG('f', "Creating directory  %s\n", name);
+
+    directory = new Directory(NumDirEntries);
+    directory->FetchFrom(directoryFile);
+
+    if (directory->Find(name) != -1)
+        success = FALSE;            // dir file is already in directory
+    else {  
+        freeMap = new BitMap(NumSectors);
+        freeMap->FetchFrom(freeMapFile);
+        sector = freeMap->Find();   // find a sector to hold the dir file header
+
+        if (sector == -1)       
+                success = FALSE;        // no free block for dir file header 
+        else if (!directory->Add(name, sector))
+                success = FALSE;    // no space in directory
+        else {
+            hdr = new FileHeader;
+            hdr->SetFileType(FILETYPE_DIR); // MARK DIRECTORY
+            if (!hdr->Allocate(freeMap, initialSize))
+                    success = FALSE;    // no space on disk for data
+            else {  
+                success = TRUE;
+                DEBUG('f', "Creating file :WriteBack hdr ....\n");
+                hdr->WriteBack(sector); 
+
+                // Allocate new dir
+                Directory *newDir = new Directory(NumDirEntries);
+                OpenFile *newDirFile = new OpenFile(sector);
+                
+                newDir->fatherDirSector = currentDirSector;
+                currentDirSector = sector;
+                
+                DEBUG('f', "Creating file :WriteBack NEW dir ....\n");
+                newDir->WriteBack(newDirFile);
+
+    
+                DEBUG('f', "Creating file :WriteBack current dir ....\n");  
+                directory->WriteBack(directoryFile);
+                DEBUG('f', "Creating file :WriteBack freeMap ....\n");
+                freeMap->WriteBack(freeMapFile);
+                delete newDir;
+                delete newDirFile;
+            }
+            delete hdr;
+        }
+
+        delete freeMap;
+    }
+    delete directory;
+    return success;
+}
+
+bool FileSystem::ChangeDir(char *name)  // Change current dir 
+{
+    Directory *directory = new Directory(NumDirEntries);
+    directory->FetchFrom(directoryFile);
+    int s = directory->Find(name);
+    if (s >= 0)
+    {
+        FileHeader *hdr = new FileHeader;
+        hdr->FetchFrom(s);
+        int type = hdr->GetFileType();
+        if (type == FILETYPE_DIR)
+        {
+            directoryFile = new OpenFile(s);
+            DEBUG('f', "ChangeDir to %s\n",name);
+            return true;
+        }
+    }
+    return false;
 }
 
 //----------------------------------------------------------------------

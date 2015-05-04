@@ -17,8 +17,16 @@
 #include "disk.h"
 #include "bitmap.h"
 
-#define NumDirect 	((SectorSize - 2 * sizeof(int)) / sizeof(int))
+#include "system.h"
+
+#define NumINDirect 10
+#define NumDirect 	((  SectorSize - 3 * sizeof(int)  - 3 * sizeof(time_t) - NumINDirect * sizeof(int)) / sizeof(int))
+
+
 #define MaxFileSize 	(NumDirect * SectorSize)
+
+#define FILETYPE_NORMAL ((int)'F')
+#define FILETYPE_DIR ((int)'D')
 
 // The following class defines the Nachos "file header" (in UNIX terms,  
 // the "i-node"), describing where on disk to find all of the data in the file.
@@ -40,6 +48,7 @@ class FileHeader {
     bool Allocate(BitMap *bitMap, int fileSize);// Initialize a file header, 
 						//  including allocating space 
 						//  on disk for the file data
+    bool ReAllocate(BitMap *bitMap, int newSize);              //  Reallocate Space
     void Deallocate(BitMap *bitMap);  		// De-allocate this file's 
 						//  data blocks
 
@@ -56,11 +65,37 @@ class FileHeader {
 
     void Print();			// Print the contents of the file.
 
+    void UpdateLastAccessTime() {
+        lastAccessTime = time(0);
+    }
+
+    void UpdateLastModifyTime() {
+        lastModifyTime = time(0);
+    }
+
+    void SetFileType(int t) {
+        fileType = t;
+    }
+
+    int GetFileType() {
+        return fileType;
+    }
+
+
   private:
+    int fileType = FILETYPE_NORMAL;   // file type
+
+    time_t createTime; 
+    time_t lastAccessTime;
+    time_t lastModifyTime;
+
     int numBytes;			// Number of bytes in the file
     int numSectors;			// Number of data sectors in the file
+
     int dataSectors[NumDirect];		// Disk sector numbers for each data 
-					// block in the file
+					               // block in the file
+                                   // 
+    int indirectSectors[NumINDirect];  
 };
 
 #endif // FILEHDR_H

@@ -8,7 +8,8 @@
 PageManager::PageManager()
 {
 	//Open swap file
-	swapFile = fileSystem->Open("../vm/swap5");
+	swapFile = NULL; // For file system DEBUG
+	//swapFile = fileSystem->Open("../vm/swap5");
 
 	for (int i = 0; i < NumPhysPages; ++i)
 	{
@@ -19,8 +20,11 @@ PageManager::PageManager()
 
 PageManager::~PageManager()
 {
-	printf("Swap file DLETE!!!!!!\n");
-	delete swapFile;
+	if (swapFile != NULL)
+	{
+		delete swapFile;
+		DEBUG('a', "### ~PageManager : SwapFile DELETE!");
+	}
 }
 
 int PageManager::allocatePage(int virtAddr,bool isReadOnly)

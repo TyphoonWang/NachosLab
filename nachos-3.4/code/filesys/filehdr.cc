@@ -23,9 +23,8 @@
 // of liability and disclaimer of warranty provisions.
 
 #include "copyright.h"
-
-#include "system.h"
 #include "filehdr.h"
+#include "indfilehdr.h"
 
 //----------------------------------------------------------------------
 // FileHeader::Allocate
@@ -41,14 +40,97 @@
 bool
 FileHeader::Allocate(BitMap *freeMap, int fileSize)
 { 
+
     numBytes = fileSize;
     numSectors  = divRoundUp(fileSize, SectorSize);
-    if (freeMap->NumClear() < numSectors)
-	return FALSE;		// not enough space
+    if (freeMap->NumClear() < numSectors) {
+        DEBUG('f', "Allocate: not enough space\n");
+	   return FALSE;		// not enough space
+    }
 
-    for (int i = 0; i < numSectors; i++)
-	dataSectors[i] = freeMap->Find();
+    if (numSectors <= NumDirect)
+    {
+        DEBUG('f', "Allocate: small file!\n");
+        for (int i = 0; i < numSectors; i++)
+            dataSectors[i] = freeMap->Find();
+    }
+    else
+    {
+        DEBUG('f', "Allocate: large file! Sectors count: %d\n",numSectors);
+        // need use indirect block
+        for (int i = 0; i < NumDirect; i++)
+            dataSectors[i] = freeMap->Find();
+        int remainSectors = numSectors - NumDirect;
+        int idx = 0; 
+        while (remainSectors > 0)
+        {
+            int findSector = freeMap->Find(); // For Indirect Secotor
+            indirectSectors[idx] = findSector;
+
+            IndFileHeader *ihd = new IndFileHeader();
+            for (int i = 0; i < NumDirectIN && remainSectors > 0; ++i, --remainSectors)
+            {
+                DEBUG('f', "Allocate: Sectors %d\n",i);
+                ihd -> SetSector(i,freeMap->Find()); // For Actruall Data
+            }
+            ihd->WriteBack(findSector);
+            idx++;
+            delete ihd;
+        }
+    }
+
+    createTime = time(0);
     return TRUE;
+}
+
+bool FileHeader::ReAllocate(BitMap *freeMap, int newSize)
+{
+    int newNumSectors  = divRoundUp(newSize, SectorSize);
+    if (newNumSectors < numSectors) // do not need ReAllocate
+    {
+         return true;
+    }
+    else
+    {
+        int remainSectorsIdx = numSectors - NumDirect;
+
+        int indirectIdx = remainSectorsIdx / NumDirectIN;
+        int indirectOffset = remainSectorsIdx - indirectIdx * NumDirectIN;
+
+        int remainSectors = newNumSectors - numSectors;
+
+        if (freeMap->NumClear() < remainSectors) {
+            DEBUG('f', "REAllocate: not enough space\n");
+            return FALSE;        // not enough space
+        }
+        
+        IndFileHeader *ihd = new IndFileHeader();
+        ihd->FetchFrom(indirectSectors[indirectIdx]);
+        for (int i = indirectOffset + 1; i < NumDirectIN && remainSectors > 0; ++i, --remainSectors)
+        {
+            DEBUG('f', "ReAllocate: Sectors %d\n",i);
+            ihd -> SetSector(i,freeMap->Find()); // For Actruall Data
+        }
+
+        // new indirect block!
+        int idx = indirectIdx + 1;
+        while(remainSectors > 0)
+        {
+            int findSector = freeMap->Find(); // For Indirect Secotor
+            indirectSectors[idx] = findSector;
+
+             IndFileHeader *ihd = new IndFileHeader();
+            for (int i = 0; i < NumDirectIN && remainSectors > 0; ++i, --remainSectors)
+            {
+                DEBUG('f', "ReAllocate(new indrect block): Sectors %d\n",i);
+                ihd -> SetSector(i,freeMap->Find()); // For Actruall Data
+            }
+            ihd->WriteBack(findSector);
+            idx++;
+            delete ihd;
+        }
+        return true;
+    }
 }
 
 //----------------------------------------------------------------------
@@ -61,10 +143,40 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
 void 
 FileHeader::Deallocate(BitMap *freeMap)
 {
-    for (int i = 0; i < numSectors; i++) {
-	ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
-	freeMap->Clear((int) dataSectors[i]);
+    if (numSectors <= NumDirect)
+    {    
+        for (int i = 0; i < numSectors; i++) {
+            ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
+            freeMap->Clear((int) dataSectors[i]);
+        }
     }
+    else
+    {
+        // need use indirect block
+        for (int i = 0; i < NumDirect; i++)
+        {
+            ASSERT(freeMap->Test((int) dataSectors[i]));  // ought to be marked!
+            freeMap->Clear((int) dataSectors[i]);
+        }
+        int remainSectors = numSectors - NumDirect;
+        int idx = 0; 
+        while (remainSectors > 0)
+        {
+            int findSector = indirectSectors[idx];
+
+            IndFileHeader *ihd = new IndFileHeader();
+            ihd->FetchFrom(findSector);
+            for (int i = 0; i < NumDirectIN && remainSectors > 0; ++i, --remainSectors)
+            {
+                int s = ihd -> GetSector(i); 
+                ASSERT(freeMap->Test(s));  // ought to be marked!
+                freeMap->Clear(s);
+            }
+            idx++;
+            delete ihd;
+        }
+    }
+
 }
 
 //----------------------------------------------------------------------
@@ -77,6 +189,7 @@ FileHeader::Deallocate(BitMap *freeMap)
 void
 FileHeader::FetchFrom(int sector)
 {
+    DEBUG('f', "FileHeader::FetchFrom. Sector %d\n", sector);
     synchDisk->ReadSector(sector, (char *)this);
 }
 
@@ -106,7 +219,25 @@ FileHeader::WriteBack(int sector)
 int
 FileHeader::ByteToSector(int offset)
 {
-    return(dataSectors[offset / SectorSize]);
+    int sectorIdx = offset / SectorSize;
+    if (sectorIdx < NumDirect)
+    {    
+        return(dataSectors[sectorIdx]);
+    }
+    else
+    {
+        int remainSectorsIdx = sectorIdx - NumDirect;
+        int indirectIdx = remainSectorsIdx / NumDirectIN;
+        int indirectOffset = remainSectorsIdx - indirectIdx * NumDirectIN;
+
+        IndFileHeader *ihd = new IndFileHeader();
+        ihd->FetchFrom(indirectSectors[indirectIdx]);
+        int s = ihd->GetSector(indirectOffset);
+        delete ihd;
+        DEBUG('f', "ByteToSector: sectorIdx: %d, remainSectorsIdx: %d, indirectIdx: %d, indirectOffset:%d, Sectors %d\n",
+            sectorIdx,remainSectorsIdx,indirectIdx,indirectOffset,s);
+        return s;
+    }
 }
 
 //----------------------------------------------------------------------
@@ -132,18 +263,47 @@ FileHeader::Print()
     int i, j, k;
     char *data = new char[SectorSize];
 
+
+
     printf("FileHeader contents.  File size: %d.  File blocks:\n", numBytes);
-    for (i = 0; i < numSectors; i++)
-	printf("%d ", dataSectors[i]);
+    if (numSectors <= NumDirect)
+    {    
+        for (int i = 0; i < numSectors; i++) {
+             printf("%d ", dataSectors[i]);
+        }
+    }
+    else
+    {
+        for (int i = 0; i < NumDirect; i++)
+        {
+             printf("%d ", dataSectors[i]);
+        }
+        int remainSectors = numSectors - NumDirect;
+        int idx = 0; 
+        while (remainSectors > 0)
+        {
+            int findSector = indirectSectors[idx];
+
+            IndFileHeader *ihd = new IndFileHeader();
+            ihd->FetchFrom(findSector);
+            for (int i = 0; i < NumDirectIN && remainSectors > 0; ++i, --remainSectors)
+            {
+                int s = ihd -> GetSector(i); 
+                 printf("%d ", s);
+            }
+            idx++;
+            delete ihd;
+        }
+    }
     printf("\nFile contents:\n");
     for (i = k = 0; i < numSectors; i++) {
-	synchDisk->ReadSector(dataSectors[i], data);
+	   synchDisk->ReadSector(ByteToSector(i * SectorSize), data);
         for (j = 0; (j < SectorSize) && (k < numBytes); j++, k++) {
-	    if ('\040' <= data[j] && data[j] <= '\176')   // isprint(data[j])
-		printf("%c", data[j]);
+	       if ('\040' <= data[j] && data[j] <= '\176')   // isprint(data[j])
+		      printf("%c", data[j]);
             else
-		printf("\\%x", (unsigned char)data[j]);
-	}
+		      printf("\\%x", (unsigned char)data[j]);
+	   }
         printf("\n"); 
     }
     delete [] data;

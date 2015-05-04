@@ -101,7 +101,8 @@ FILESYS_H =../filesys/directory.h \
 	../filesys/filesys.h \
 	../filesys/openfile.h\
 	../filesys/synchdisk.h\
-	../machine/disk.h
+	../machine/disk.h\
+	../filesys/indfilehdr.h
 FILESYS_C =../filesys/directory.cc\
 	../filesys/filehdr.cc\
 	../filesys/filesys.cc\
