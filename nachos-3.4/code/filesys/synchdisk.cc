@@ -123,6 +123,7 @@ SynchDisk::RequestDone()
     semaphore->V();
 }
 
+DiskBufferBlock::~DiskBufferBlock(){}
 
 int DiskBuffer::SwapDown()
 {
@@ -148,29 +149,41 @@ int DiskBuffer::SwapDown()
 }
 
 char* DiskBuffer::GetSectorContent(int sector,bool readOnly)
+{
+    for (int i = 0; i < DISK_BUFFER_NUM; ++i)
     {
-        for (int i = 0; i < DISK_BUFFER_NUM; ++i)
+        if (buffers[i]->sector == sector)
         {
-            if (buffers[i]->sector == sector)
+            buffers[i]->hit ++;
+            if (!readOnly)
             {
-                buffers[i]->hit ++;
-                if (!readOnly)
-                {
-                    buffers[i]->dirty = 1;
-                }
-                return buffers[i]->content;
+                buffers[i]->dirty = 1;
             }
+            return buffers[i]->content;
         }
-        // swap a sector down
-        int find = SwapDown();
-        buffers[find]->sector = sector;
-        buffers[find]->hit = 0;
-        synchDisk->ReadSector(sector,buffers[find]->content);
-        if (readOnly)
-        {
-            buffers[find]->dirty = 0;
-        } else {
-            buffers[find]->dirty = 1;
-        }
-        return buffers[find]->content;
     }
+    // swap a sector down
+    int find = SwapDown();
+    buffers[find]->sector = sector;
+    buffers[find]->hit = 0;
+    synchDisk->ReadSector(sector,buffers[find]->content);
+    if (readOnly)
+    {
+        buffers[find]->dirty = 0;
+    } else {
+        buffers[find]->dirty = 1;
+    }
+    return buffers[find]->content;
+}
+
+DiskBuffer::~DiskBuffer()
+{
+    for (int i = 0; i < DISK_BUFFER_NUM; ++i)
+    {
+        if (buffers[i]->sector != DISK_BUFFER_UNUSED && buffers[i]->dirty)
+        {
+            synchDisk->WriteSector(buffers[i]->sector,buffers[i]->content); // write back
+        }
+        delete buffers[i];
+    }
+}

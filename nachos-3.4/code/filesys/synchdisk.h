@@ -47,13 +47,7 @@ public:
         }
         synchDisk = _synchDisk;
     }
-    ~DiskBuffer()
-    {
-        for (int i = 0; i < DISK_BUFFER_NUM; ++i)
-        {
-            delete buffers[i];
-        }
-    }
+    ~DiskBuffer();
     char* GetSectorContent(int sector,bool readOnly);
 
     int SwapDown();
