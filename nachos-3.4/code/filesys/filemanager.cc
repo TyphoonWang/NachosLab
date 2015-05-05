@@ -27,6 +27,10 @@ FileManager::FileManager()
  		openedFileSector[fd] = sector;
  		openedFileCount[fd] = 1;
  	}
+ 	if (fileLocks[fd] == NULL)
+ 	{
+ 		fileLocks[fd] = new RWLock("File lock");
+ 	}
  	return fd;
  }
 
@@ -55,10 +59,6 @@ FileManager::ReadStart(int fd)
 {
  	if (openedFileSector[fd] != INVALID_FD)
  	{
- 		if (fileLocks[fd] == NULL)
- 		{
- 			fileLocks[fd] = new RWLock("File lock");
- 		}
  		fileLocks[fd] -> ReadBegin();
  	}
 }
@@ -78,10 +78,6 @@ FileManager::WriteStart(int fd)
 {
  	if (openedFileSector[fd] != INVALID_FD)
  	{
- 		if (fileLocks[fd] == NULL)
- 		{
- 			fileLocks[fd] = new RWLock("File lock");
- 		}
  		fileLocks[fd] -> WriteBegin();
  	}
 }

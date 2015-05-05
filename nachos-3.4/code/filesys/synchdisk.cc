@@ -56,6 +56,7 @@ SynchDisk::SynchDisk(char* name)
 
 SynchDisk::~SynchDisk()
 {
+    delete diskBuffer;
     delete disk;
     delete lock;
     delete semaphore;
@@ -82,7 +83,7 @@ SynchDisk::ReadSector(int sectorNumber, char* data)
 void
 SynchDisk::ReadSectorFast(int sectorNumber, char* data)
 {
-    char *buf = diskBuffer->GetSectorContent(sectorNumber,false);
+    char *buf = diskBuffer->GetSectorContent(sectorNumber,true);
     bcopy(buf, data, SectorSize); //copy buf to data
 }
 
@@ -107,8 +108,10 @@ SynchDisk::WriteSector(int sectorNumber, char* data)
 void
 SynchDisk::WriteSectorFast(int sectorNumber, char* data)
 {
-    char *buf = diskBuffer->GetSectorContent(sectorNumber,true);
+    char *buf = diskBuffer->GetSectorContent(sectorNumber,false);
     bcopy(data, buf, SectorSize);
+    
+    WriteSector(sectorNumber,data); // write back
 }
 
 //----------------------------------------------------------------------
@@ -180,10 +183,6 @@ DiskBuffer::~DiskBuffer()
 {
     for (int i = 0; i < DISK_BUFFER_NUM; ++i)
     {
-        if (buffers[i]->sector != DISK_BUFFER_UNUSED && buffers[i]->dirty)
-        {
-            synchDisk->WriteSector(buffers[i]->sector,buffers[i]->content); // write back
-        }
         delete buffers[i];
     }
 }

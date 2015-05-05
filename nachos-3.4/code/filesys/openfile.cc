@@ -121,11 +121,11 @@ OpenFile::Write(char *into, int numBytes)
 int
 OpenFile::ReadAt(char *into, int numBytes, int position)
 {
-    fileManager->ReadStart(fd);
+    DEBUG('f', "1 ..");
     int fileLength = hdr->FileLength();
     int i, firstSector, lastSector, numSectors;
     char *buf;
-
+    DEBUG('f', "2        ..");
     if ((numBytes <= 0) || (position >= fileLength))
     	return 0; 				// check request
     if ((position + numBytes) > fileLength)		
@@ -139,11 +139,12 @@ OpenFile::ReadAt(char *into, int numBytes, int position)
 
     // read in all the full and partial sectors that we need
     buf = new char[numSectors * SectorSize];
+    fileManager->ReadStart(fd);
     for (i = firstSector; i <= lastSector; i++)	
-        synchDisk->ReadSector(hdr->ByteToSector(i * SectorSize), 
+        synchDisk->ReadSectorFast(hdr->ByteToSector(i * SectorSize), 
 					&buf[(i - firstSector) * SectorSize]);
-    hdr->UpdateLastAccessTime();
     fileManager->ReadEnd(fd);
+    hdr->UpdateLastAccessTime();
     // copy the part we want
     bcopy(&buf[position - (firstSector * SectorSize)], into, numBytes);
     delete [] buf;   
@@ -153,7 +154,6 @@ OpenFile::ReadAt(char *into, int numBytes, int position)
 int
 OpenFile::WriteAt(char *from, int numBytes, int position)
 {
-    fileManager->WriteStart(fd);
     int fileLength = hdr->FileLength();
     int i, firstSector, lastSector, numSectors;
     bool firstAligned, lastAligned;
@@ -162,6 +162,7 @@ OpenFile::WriteAt(char *from, int numBytes, int position)
     //re-allocate space
     if (fileLength < position + numBytes)
     {
+        DEBUG('f', "ReAllocate ..");
         BitMap *freeMap = new BitMap(NumSectors);
         freeMap->FetchFrom(fileSystem->GetFreeMapFile());
         hdr->ReAllocate(freeMap,position + numBytes);
@@ -178,6 +179,7 @@ OpenFile::WriteAt(char *from, int numBytes, int position)
     lastSector = divRoundDown(position + numBytes - 1, SectorSize);
     numSectors = 1 + lastSector - firstSector;
 
+
     buf = new char[numSectors * SectorSize];
 
     firstAligned = (position == (firstSector * SectorSize));
@@ -185,10 +187,12 @@ OpenFile::WriteAt(char *from, int numBytes, int position)
 
 // read in first and last sector, if they are to be partially modified
     if (!firstAligned){
+        DEBUG('f', "ReadAt 1....\n");
         ReadAt(buf, SectorSize, firstSector * SectorSize);	
-         DEBUG('f', "ReadAt 1.\n");
+        DEBUG('f', "ReadAt 1.\n");
     }
     if (!lastAligned && ((firstSector != lastSector) || firstAligned)){
+        DEBUG('f', "ReadAt 2.....\n");
         ReadAt(&buf[(lastSector - firstSector) * SectorSize], 
 				SectorSize, lastSector * SectorSize);	
         DEBUG('f', "ReadAt 2.\n");
@@ -198,13 +202,14 @@ OpenFile::WriteAt(char *from, int numBytes, int position)
     bcopy(from, &buf[position - (firstSector * SectorSize)], numBytes);
 
 // write modified sectors back
+   fileManager->WriteStart(fd);
     for (i = firstSector; i <= lastSector; i++)	{
-        synchDisk->WriteSector(hdr->ByteToSector(i * SectorSize), 
+        synchDisk->WriteSectorFast(hdr->ByteToSector(i * SectorSize), 
 					&buf[(i - firstSector) * SectorSize]);
          DEBUG('f', "Copy %d.\n",i);
     }
-    hdr->UpdateLastModifyTime();
     fileManager->WriteEnd(fd);
+    hdr->UpdateLastModifyTime();
     delete [] buf;
     return numBytes;
 }
