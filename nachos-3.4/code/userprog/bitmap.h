@@ -31,6 +31,7 @@
 // Each bit represents whether the corresponding sector or page is
 // in use or free.
 
+class OpenFile;
 class BitMap {
   public:
     BitMap(int nitems);		// Initialize a bitmap, with "nitems" bits

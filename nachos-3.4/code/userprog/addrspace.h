@@ -19,6 +19,8 @@
 
 #define UserStackSize		1024 	// increase this as necessary!
 
+class OpenFile;
+
 class AddrSpace {
   public:
     AddrSpace(char* filename);	// Create an address space,

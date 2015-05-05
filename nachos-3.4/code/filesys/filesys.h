@@ -42,7 +42,7 @@
 
 #ifdef FILESYS_STUB 		// Temporarily implement file system calls as 
 				// calls to UNIX, until the real file system
-				// implementation is available
+				// implementation is available         // 
 class FileSystem {
   public:
     FileSystem(bool format) {}
@@ -67,6 +67,8 @@ class FileSystem {
 };
 
 #else // FILESYS
+
+class OpenFile;
 class FileSystem {
   public:
     FileSystem(bool format);		// Initialize the file system.

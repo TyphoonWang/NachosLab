@@ -41,6 +41,7 @@ extern PageManager *pageManager; // inverted page table for user threads
 #ifdef FILESYS_NEEDED 		// FILESYS or FILESYS_STUB 
 #include "filesys.h"
 extern FileSystem  *fileSystem;
+extern FileManager *fileManager;
 #endif
 
 #ifdef FILESYS
