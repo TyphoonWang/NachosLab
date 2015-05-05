@@ -14,6 +14,55 @@
 #include "disk.h"
 #include "synch.h"
 
+#define DISK_BUFFER_NUM 16
+#define DISK_BUFFER_UNUSED -1
+class SynchDisk;
+class DiskBufferBlock
+{
+public:
+    DiskBufferBlock()
+    {
+        sector = DISK_BUFFER_UNUSED;
+        dirty  = 0;
+        hit = 0;
+    }
+    ~DiskBufferBlock();
+
+    int sector; //physical sector
+    int hit;
+    bool dirty;
+    char content[SectorSize];
+private:
+
+};
+
+class DiskBuffer
+{
+public:
+    DiskBuffer(SynchDisk* _synchDisk)
+    {
+        for (int i = 0; i < DISK_BUFFER_NUM; ++i)
+        {
+            buffers[i] = new DiskBufferBlock();
+        }
+        synchDisk = _synchDisk;
+    }
+    ~DiskBuffer()
+    {
+        for (int i = 0; i < DISK_BUFFER_NUM; ++i)
+        {
+            delete buffers[i];
+        }
+    }
+    char* GetSectorContent(int sector,bool readOnly);
+
+    int SwapDown();
+
+private:
+    DiskBufferBlock* buffers[DISK_BUFFER_NUM]; 
+    SynchDisk* synchDisk;
+};
+
 // The following class defines a "synchronous" disk abstraction.
 // As with other I/O devices, the raw physical disk is an asynchronous device --
 // requests to read or write portions of the disk return immediately,
@@ -37,7 +86,11 @@ class SynchDisk {
     					// Disk::ReadRequest/WriteRequest and
 					// then wait until the request is done.
     void WriteSector(int sectorNumber, char* data);
-    
+
+    //buffered 
+    void WriteSectorFast(int sectorNumber, char* data);
+    void ReadSectorFast(int sectorNumber, char* data);
+
     void RequestDone();			// Called by the disk device interrupt
 					// handler, to signal that the
 					// current disk operation is complete.
@@ -48,6 +101,7 @@ class SynchDisk {
 					// with the interrupt handler
     Lock *lock;		  		// Only one read/write request
 					// can be sent to the disk at a time
+    DiskBuffer *diskBuffer;
 };
 
 #endif // SYNCHDISK_H

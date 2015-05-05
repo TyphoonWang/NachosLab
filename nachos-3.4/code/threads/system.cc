@@ -187,8 +187,8 @@ Initialize(int argc, char **argv)
 #endif
 
 #ifdef FILESYS_NEEDED
-    fileSystem = new FileSystem(format);
     fileManager = new FileManager();
+    fileSystem = new FileSystem(format);
 #endif
 
 #ifdef NETWORK

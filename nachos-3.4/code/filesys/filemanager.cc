@@ -7,9 +7,10 @@ FileManager::FileManager()
 {
 	for (int i = 0; i < MAX_OPENFILE_NUM; ++i)
 	{
-		openedFile[i] = INVALID_FD;
+		openedFileSector[i] = INVALID_FD;
 		fileLocks[i] = NULL;
 	}
+	// INIT fd 0 fd 1 here as STDIN STDOUT if needed.....
 }
 
  int 
@@ -23,7 +24,7 @@ FileManager::FileManager()
  	else
  	{
  		fd = allocateFD();
- 		openedFile[fd] = sector;
+ 		openedFileSector[fd] = sector;
  		openedFileCount[fd] = 1;
  	}
  	return fd;
@@ -32,12 +33,12 @@ FileManager::FileManager()
  bool 
  FileManager::MarkClose(int fd)
  {
- 	if (openedFile[fd] != INVALID_FD)
+ 	if (openedFileSector[fd] != INVALID_FD)
  	{
  		openedFileCount[fd] --;
  		if (openedFileCount[fd] == 0)
  		{
- 			openedFile[fd] = INVALID_FD;
+ 			openedFileSector[fd] = INVALID_FD;
  			if(fileLocks[fd] != NULL)
  			{
  				delete fileLocks[fd];
@@ -52,7 +53,7 @@ FileManager::FileManager()
 void 
 FileManager::ReadStart(int fd)
 {
- 	if (openedFile[fd] != INVALID_FD)
+ 	if (openedFileSector[fd] != INVALID_FD)
  	{
  		if (fileLocks[fd] == NULL)
  		{
@@ -65,7 +66,7 @@ FileManager::ReadStart(int fd)
 void 
 FileManager::ReadEnd(int fd)
 {
- 	if (openedFile[fd] != INVALID_FD)
+ 	if (openedFileSector[fd] != INVALID_FD)
  	{
  		ASSERT(fileLocks[fd] != NULL);
  		fileLocks[fd] -> ReadEnd();
@@ -75,7 +76,7 @@ FileManager::ReadEnd(int fd)
 void 
 FileManager::WriteStart(int fd)
 {
- 	if (openedFile[fd] != INVALID_FD)
+ 	if (openedFileSector[fd] != INVALID_FD)
  	{
  		if (fileLocks[fd] == NULL)
  		{
@@ -88,7 +89,7 @@ FileManager::WriteStart(int fd)
 void 
 FileManager::WriteEnd(int fd)
 {
- 	if (openedFile[fd] != INVALID_FD)
+ 	if (openedFileSector[fd] != INVALID_FD)
  	{
  		ASSERT(fileLocks[fd] != NULL);
  		fileLocks[fd] -> WriteEnd();
@@ -102,7 +103,7 @@ FileManager::WriteEnd(int fd)
  {
  	for (int i = 0; i < MAX_OPENFILE_NUM; ++i)
 	{
-		if(openedFile[i] == INVALID_FD)
+		if(openedFileSector[i] == INVALID_FD)
 			return i;
 	}
 	return INVALID_FD;
@@ -113,8 +114,11 @@ FileManager::findFD(int sector)
 {
  	for (int i = 0; i < MAX_OPENFILE_NUM; ++i)
 	{
-		if(openedFile[i] == sector)
+		if(openedFileSector[i] == sector){
 			return i;
+		}
+
+
 	}
 	return INVALID_FD;
 }

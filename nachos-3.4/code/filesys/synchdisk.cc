@@ -45,6 +45,7 @@ SynchDisk::SynchDisk(char* name)
     semaphore = new Semaphore("synch disk", 0);
     lock = new Lock("synch disk lock");
     disk = new Disk(name, DiskRequestDone, (int) this);
+    diskBuffer = new DiskBuffer(this);
 }
 
 //----------------------------------------------------------------------
@@ -78,6 +79,13 @@ SynchDisk::ReadSector(int sectorNumber, char* data)
     lock->Release();
 }
 
+void
+SynchDisk::ReadSectorFast(int sectorNumber, char* data)
+{
+    char *buf = diskBuffer->GetSectorContent(sectorNumber,false);
+    bcopy(buf, data, SectorSize); //copy buf to data
+}
+
 //----------------------------------------------------------------------
 // SynchDisk::WriteSector
 // 	Write the contents of a buffer into a disk sector.  Return only
@@ -96,6 +104,13 @@ SynchDisk::WriteSector(int sectorNumber, char* data)
     lock->Release();
 }
 
+void
+SynchDisk::WriteSectorFast(int sectorNumber, char* data)
+{
+    char *buf = diskBuffer->GetSectorContent(sectorNumber,true);
+    bcopy(data, buf, SectorSize);
+}
+
 //----------------------------------------------------------------------
 // SynchDisk::RequestDone
 // 	Disk interrupt handler.  Wake up any thread waiting for the disk
@@ -107,3 +122,55 @@ SynchDisk::RequestDone()
 { 
     semaphore->V();
 }
+
+
+int DiskBuffer::SwapDown()
+{
+    int minHit = 999999;
+    int find;
+    for (int i = 0; i < DISK_BUFFER_NUM; ++i)
+    {
+        if (buffers[i]->sector == DISK_BUFFER_UNUSED)
+        {
+            return i;
+        }
+        if (buffers[i]->hit < minHit)
+        {
+            minHit = buffers[i]->hit;
+            find = i;
+        }
+    }
+    if (buffers[find]->dirty)
+    {
+        synchDisk->WriteSector(buffers[find]->sector,buffers[find]->content);
+    }
+    return find;
+}
+
+char* DiskBuffer::GetSectorContent(int sector,bool readOnly)
+    {
+        for (int i = 0; i < DISK_BUFFER_NUM; ++i)
+        {
+            if (buffers[i]->sector == sector)
+            {
+                buffers[i]->hit ++;
+                if (!readOnly)
+                {
+                    buffers[i]->dirty = 1;
+                }
+                return buffers[i]->content;
+            }
+        }
+        // swap a sector down
+        int find = SwapDown();
+        buffers[find]->sector = sector;
+        buffers[find]->hit = 0;
+        synchDisk->ReadSector(sector,buffers[find]->content);
+        if (readOnly)
+        {
+            buffers[find]->dirty = 0;
+        } else {
+            buffers[find]->dirty = 1;
+        }
+        return buffers[find]->content;
+    }

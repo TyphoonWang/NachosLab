@@ -25,7 +25,7 @@ class FileManager {
     void WriteEnd(int fd);
 
   private:
-    int openedFile[MAX_OPENFILE_NUM]; 		// saved inode sector
+    int openedFileSector[MAX_OPENFILE_NUM]; 		// saved inode sector
     int openedFileCount[MAX_OPENFILE_NUM];  // how many thread is using a file
     RWLock* fileLocks[MAX_OPENFILE_NUM];    // locks handle read / write
 
