@@ -24,6 +24,8 @@ class FileManager {
     void WriteStart(int fd);
     void WriteEnd(int fd);
 
+    int getSector(int fd);
+
   private:
     int openedFileSector[MAX_OPENFILE_NUM]; 		// saved inode sector
     int openedFileCount[MAX_OPENFILE_NUM];  // how many thread is using a file

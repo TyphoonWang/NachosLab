@@ -34,6 +34,12 @@ FileManager::FileManager()
  	return fd;
  }
 
+int  
+FileManager::getSector(int fd)
+{
+	return openedFileSector[fd];
+}
+
  bool 
  FileManager::MarkClose(int fd)
  {

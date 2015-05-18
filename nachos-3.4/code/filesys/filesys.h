@@ -81,6 +81,8 @@ class FileSystem {
     bool Create(char *name, int initialSize);  	
 					// Create a file (UNIX creat)
         
+    int  FindSector(char *name);
+        
     bool CreateDir(char *name);  // Create a dir in current dir
 
     bool ChangeDir(char *name);  // Change current dir 

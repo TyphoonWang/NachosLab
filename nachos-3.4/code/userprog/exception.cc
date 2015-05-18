@@ -87,6 +87,76 @@ ExceptionHandler(ExceptionType which)
         fileSystem->Create(fileName, 0);    
         PCIncrease();
     }
+    else if ((which == SyscallException) && (type == SC_Open))
+    {
+        int arg1 = machine->ReadRegister(4);
+        char fileName[20];
+        int val = 0;
+        int i = 0;
+        //Read name
+        do{
+            while(!machine->ReadMem(arg1, 1, & val));
+            arg1 ++;
+            fileName[i++] = (char)val;
+        }while(val != 0);
+        printf("open file:%s\n", fileName);
+        int s = fileSystem->FindSector(fileName);
+        int retVal = fileManager->MarkOpen(s);
+        machine->WriteRegister(2,retVal);
+        PCIncrease();
+    }
+    else if ((which == SyscallException) && (type == SC_Close))
+    {
+        int arg1 = machine->ReadRegister(4);
+        int retVal = fileManager->MarkClose(arg1);
+        PCIncrease();
+    }
+    else if ((which == SyscallException) && (type == SC_Read))
+    {
+        int buffer = machine->ReadRegister(4);
+        int size = machine->ReadRegister(5);
+        int fd = machine->ReadRegister(6);
+        OpenFile *f = new OpenFile(fileManager->getSector(fd));
+        char buf[32];
+        int readed = 0;
+        int addr = buffer;
+        while (size > 0)
+        {
+            int r = f->Read(buf,32);
+            for (int i = 0; i < r; ++i)
+            {
+                int val = buf[i];
+                while(!machine->WriteMem(addr, 1, val));
+                addr ++;
+                size -= 1;
+            }  
+            readed += r;
+        }
+        delete f;
+        printf("read file:%d\n", fd);
+        machine->WriteRegister(2,readed);
+        PCIncrease();
+    }
+    else if ((which == SyscallException) && (type == SC_Write))
+    {
+        int buffer = machine->ReadRegister(4);
+        int size = machine->ReadRegister(5);
+        int fd = machine->ReadRegister(6);
+        OpenFile *f = new OpenFile(fileManager->getSector(fd));
+
+        char data[256];
+        int val = 0;
+        int i = 0;
+        do{
+            while(!machine->ReadMem(buffer, 1, & val));
+            buffer ++;
+            data[i++] = (char)val;
+        }while(val != 0);
+        f->Write(data,size);
+        delete f;
+        printf("write file %d\n",fd);
+        PCIncrease();
+    }
     else if(which == PageFaultException) {
     	int addr = machine->ReadRegister(BadVAddrReg);
     	pageManager->handlePageFault(addr);

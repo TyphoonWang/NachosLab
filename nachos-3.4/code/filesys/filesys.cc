@@ -232,6 +232,15 @@ FileSystem::Create(char *name, int initialSize)
     return success;
 }
 
+int  
+FileSystem::FindSector(char *name)
+{
+    Directory *directory;
+    directory = new Directory(NumDirEntries);
+    directory->FetchFrom(directoryFile);
+    return directory->Find(name);
+}
+
 OpenFile* 
 FileSystem::GetFreeMapFile() // who get free map need delete
 {
