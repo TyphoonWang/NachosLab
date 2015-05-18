@@ -25,6 +25,8 @@
 #include "system.h"
 #include "syscall.h"
 
+extern void StartProcess(char *file);
+
 //----------------------------------------------------------------------
 // ExceptionHandler
 // 	Entry point into the Nachos kernel.  Called when a user program
@@ -55,6 +57,28 @@ void PCIncrease()
     machine->WriteRegister(PrevPCReg, PC); 
     machine->WriteRegister(PCReg, NextPC); 
     machine->WriteRegister(NextPCReg, NextPC + sizeof(int));
+}
+
+void PCChange(int NextPC)
+{
+    int PC = machine->ReadRegister(PCReg);
+    machine->WriteRegister(PrevPCReg, PC); 
+    machine->WriteRegister(PCReg, NextPC); 
+    machine->WriteRegister(NextPCReg, NextPC + sizeof(int));
+}
+
+void exec(int fileName)
+{
+    char* name = (char*)fileName;
+    StartProcess(name);
+}
+
+void fork(int parentThread)
+{
+    Thread *p = (Thread *)parentThread;
+    //init addrspace and set PC
+    currentThread->space = new AddrSpace(*(p->space));
+    PCChange(p->forkedPC);
 }
 
 void
@@ -155,6 +179,33 @@ ExceptionHandler(ExceptionType which)
         f->Write(data,size);
         delete f;
         printf("write file %d\n",fd);
+        PCIncrease();
+    }
+    else if ((which == SyscallException) && (type == SC_Exec))
+    {
+        int arg1 = machine->ReadRegister(4);
+        char fileName[20];
+        int val = 0;
+        int i = 0;
+        //Read name
+        do{
+            while(!machine->ReadMem(arg1, 1, & val));
+            arg1 ++;
+            fileName[i++] = (char)val;
+        }while(val != 0);
+        printf("exec file:%s\n", fileName);
+        Thread *t = new Thread("exec");
+        t->Fork(exec, (int)fileName); 
+        machine->WriteRegister(2,t->getPid());
+        PCIncrease();
+    }
+    else if ((which == SyscallException) && (type == SC_Fork))
+    {
+        int pc = machine->ReadRegister(4);
+        printf("fork to pc:%d\n", pc);
+        Thread *t = new Thread("fork");
+        currentThread->forkedPC = pc;
+        t->Fork(fork, (int)currentThread); 
         PCIncrease();
     }
     else if(which == PageFaultException) {

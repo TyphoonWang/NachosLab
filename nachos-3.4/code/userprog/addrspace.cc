@@ -98,6 +98,17 @@ AddrSpace::AddrSpace(char* filename)
 
 }
 
+AddrSpace::AddrSpace(const AddrSpace& a)
+{
+    noffH = a.noffH;
+    executable = a.executable;
+    numPages = a.numPages;
+    codePages = a.codePages;
+    dataPages = a.dataPages;
+    finishInit = a.finishInit;
+    // should clone all mem that already allocate!
+}
+
 //----------------------------------------------------------------------
 // AddrSpace::~AddrSpace
 // 	Dealloate an address space.  Nothing for now!

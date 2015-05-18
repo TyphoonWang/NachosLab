@@ -26,6 +26,7 @@ class AddrSpace {
     AddrSpace(char* filename);	// Create an address space,
 					// initializing it with the program
 					// stored in the file "fileName"
+    AddrSpace(const AddrSpace& a);            // 
     ~AddrSpace();			// De-allocate an address space
 
     void InitRegisters();		// Initialize user-level CPU registers,
@@ -37,7 +38,6 @@ class AddrSpace {
     bool isFinishInit() { return finishInit; } // if all AddrSpace is initialized in Memory or Swap area
     bool initSpace(int virtualPageNum, int physicalPageNum);
 
-  private:
     NoffHeader noffH;
     OpenFile *executable;
 

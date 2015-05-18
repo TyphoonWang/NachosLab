@@ -116,6 +116,8 @@ class Thread {
     void increaseTimerTick() { timerTick ++; }
     int  maxTimerTick() { return 1; }
 
+    int forkedPC;
+
     void Print() { printf("%s, ", name); }
     void PrintAll() { printf("name: %s, pid= %d, uid= %d \n", name, pid, uid);}
     void TS() {
