@@ -8,8 +8,8 @@
 PageManager::PageManager()
 {
 	//Open swap file
-	swapFile = NULL; // For file system DEBUG
-	//swapFile = fileSystem->Open("../vm/swap5");
+	//swapFile = NULL; // For file system DEBUG
+	swapFile = fileSystem->Open("../vm/swap5");
 
 	for (int i = 0; i < NumPhysPages; ++i)
 	{
@@ -112,6 +112,7 @@ void PageManager::handlePageFault(int virtAddress)
  	DEBUG('a', "### PageManager::clearTLB...\n");
  	for (int i = 0; i < TLBSize; ++i)
 	{
+		ASSERT(machine->tlb != NULL);
 		machine->tlb[i].valid = FALSE;
 	}
  }

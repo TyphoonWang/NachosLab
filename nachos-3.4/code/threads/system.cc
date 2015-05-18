@@ -179,7 +179,7 @@ Initialize(int argc, char **argv)
     
 #ifdef USER_PROGRAM
     machine = new Machine(debugUserProg);	// this must come first
-    pageManager = new PageManager();
+   
 #endif
 
 #ifdef FILESYS
@@ -190,7 +190,9 @@ Initialize(int argc, char **argv)
     fileManager = new FileManager();
     fileSystem = new FileSystem(format);
 #endif
-
+#ifdef USER_PROGRAM
+ pageManager = new PageManager();
+ #endif
 #ifdef NETWORK
     postOffice = new PostOffice(netname, rely, 10);
 #endif

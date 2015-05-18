@@ -47,6 +47,15 @@
 //	"which" is the kind of exception.  The list of possible exceptions 
 //	are in machine.h.
 //----------------------------------------------------------------------
+//
+void PCIncrease()
+{
+    int PC = machine->ReadRegister(PCReg);
+    int NextPC = machine->ReadRegister(NextPCReg); 
+    machine->WriteRegister(PrevPCReg, PC); 
+    machine->WriteRegister(PCReg, NextPC); 
+    machine->WriteRegister(NextPCReg, NextPC + sizeof(int));
+}
 
 void
 ExceptionHandler(ExceptionType which)
@@ -61,6 +70,22 @@ ExceptionHandler(ExceptionType which)
         int arg1 = machine->ReadRegister(4);
         printf("[User program] Exit: %d\n", arg1);
         currentThread->Finish();
+    }
+    else if ((which == SyscallException) && (type == SC_Create))
+    {
+        int arg1 = machine->ReadRegister(4);
+        char fileName[20];
+        int val = 0;
+        int i = 0;
+        //Read name
+        do{
+            while(!machine->ReadMem(arg1, 1, & val));
+            arg1 ++;
+            fileName[i++] = (char)val;
+        }while(val != 0);
+        printf("creat file:%s\n", fileName);
+        fileSystem->Create(fileName, 0);    
+        PCIncrease();
     }
     else if(which == PageFaultException) {
     	int addr = machine->ReadRegister(BadVAddrReg);
