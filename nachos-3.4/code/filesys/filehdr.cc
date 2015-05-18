@@ -105,6 +105,12 @@ bool FileHeader::ReAllocate(BitMap *freeMap, int newSize)
         }
         
         IndFileHeader *ihd = new IndFileHeader();
+        if (indirectSectors[indirectIdx] <= 0)
+        {
+            int findSector = freeMap->Find(); // For Indirect Secotor
+            indirectSectors[indirectIdx] = findSector;
+            ihd->WriteBack(findSector);
+        }
         ihd->FetchFrom(indirectSectors[indirectIdx]);
         for (int i = indirectOffset + 1; i < NumDirectIN && remainSectors > 0; ++i, --remainSectors)
         {

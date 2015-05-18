@@ -84,7 +84,7 @@ ExceptionHandler(ExceptionType which)
             fileName[i++] = (char)val;
         }while(val != 0);
         printf("creat file:%s\n", fileName);
-        fileSystem->Create(fileName, 0);    
+        fileSystem->Create(fileName, 16);    
         PCIncrease();
     }
     else if ((which == SyscallException) && (type == SC_Open))
