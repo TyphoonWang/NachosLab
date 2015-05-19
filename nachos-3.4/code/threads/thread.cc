@@ -51,6 +51,9 @@ Thread::Thread(char* threadName,int threadUid)
     priority = 1;
     timerTick = 0;
 
+    joinCondition = new Condition("Join condition");
+    joinLock = new Lock("Join lock");
+
 #ifdef USER_PROGRAM
     space = NULL;
 #endif
@@ -198,6 +201,10 @@ Thread::Finish ()
     }
     threadToBeDestroyed = currentThread;
     PidFree(pid);
+    if (joinCondition != NULL)
+    {
+       joinCondition->Broadcast(joinLock);
+    }
     Sleep();					// invokes SWITCH
     // not reached
 }
@@ -392,4 +399,13 @@ void
 Thread::PidFree(int aPid)
 {
     threadTable[aPid] = NULL;
+}
+
+void
+Thread::Join(int pid)
+{
+    Thread *t = threadTable[pid];
+    ASSERT(t != NULL);
+    joinLock->Acquire();
+    t->joinCondition->Wait(joinLock);
 }

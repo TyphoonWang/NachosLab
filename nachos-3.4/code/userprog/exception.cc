@@ -208,6 +208,21 @@ ExceptionHandler(ExceptionType which)
         t->Fork(fork, (int)currentThread); 
         PCIncrease();
     }
+    else if ((which == SyscallException) && (type == SC_Yield))
+    {
+        printf("Yield\n");
+        currentThread->Yield();
+        PCIncrease();
+    }
+    else if ((which == SyscallException) && (type == SC_Join))
+    {
+        int pid = machine->ReadRegister(4);
+        printf("join to pid:%d\n", pc);
+        Thread *t = new Thread("fork");
+        currentThread->forkedPC = pc;
+        t->Fork(fork, (int)currentThread); 
+        PCIncrease();
+    }
     else if(which == PageFaultException) {
     	int addr = machine->ReadRegister(BadVAddrReg);
     	pageManager->handlePageFault(addr);

@@ -77,6 +77,8 @@ extern void ThreadPrint(int arg);
 //  Some threads also belong to a user address space; threads
 //  that only run in the kernel have a NULL address space.
 class AddrSpace;
+class Condition;
+class Lock;
 class Thread {
   private:
     // NOTE: DO NOT CHANGE the order of these first two members.
@@ -116,7 +118,12 @@ class Thread {
     void increaseTimerTick() { timerTick ++; }
     int  maxTimerTick() { return 1; }
 
-    int forkedPC;
+    void Join(int pid);
+
+    int forkedPC; // recored when fork happen
+
+    Condition *joinCondition; // broadcast when finish
+    Lock *joinLock;
 
     void Print() { printf("%s, ", name); }
     void PrintAll() { printf("name: %s, pid= %d, uid= %d \n", name, pid, uid);}
