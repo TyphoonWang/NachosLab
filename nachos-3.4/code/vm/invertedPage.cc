@@ -9,7 +9,7 @@ PageManager::PageManager()
 {
 	//Open swap file
 	//swapFile = NULL; // For file system DEBUG
-	swapFile = fileSystem->Open("../vm/swap5");
+	swapFile = fileSystem->Open("swap5");
 
 	for (int i = 0; i < NumPhysPages; ++i)
 	{
@@ -115,6 +115,11 @@ void PageManager::handlePageFault(int virtAddress)
 		ASSERT(machine->tlb != NULL);
 		machine->tlb[i].valid = FALSE;
 	}
+ }
+
+ void PageManager::clonePages(int fromPid,int toPid)
+ {
+ 	//clone all mem page
  }
 
 // ------------------------------- PRIVATE ---------------------------------------------

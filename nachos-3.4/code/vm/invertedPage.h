@@ -44,7 +44,7 @@ public:
     int allocatePage(int virtAddr,bool isReadOnly);
     void deallocPage(int pid);
     void handlePageFault(int virtAddress);
-
+    void clonePages(int formPid,int toPid);
     void clearTLB();
 
 private:

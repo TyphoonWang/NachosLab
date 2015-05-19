@@ -106,7 +106,7 @@ AddrSpace::AddrSpace(const AddrSpace& a)
     codePages = a.codePages;
     dataPages = a.dataPages;
     finishInit = a.finishInit;
-    // should clone all mem that already allocate!
+    // should clone all mem pages in fork process
 }
 
 //----------------------------------------------------------------------

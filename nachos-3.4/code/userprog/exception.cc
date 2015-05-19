@@ -78,6 +78,7 @@ void fork(int parentThread)
     Thread *p = (Thread *)parentThread;
     //init addrspace and set PC
     currentThread->space = new AddrSpace(*(p->space));
+    pageManager->clonePages(p->getPid(),currentThread->getPid());
     PCChange(p->forkedPC);
 }
 
@@ -217,10 +218,8 @@ ExceptionHandler(ExceptionType which)
     else if ((which == SyscallException) && (type == SC_Join))
     {
         int pid = machine->ReadRegister(4);
-        printf("join to pid:%d\n", pc);
-        Thread *t = new Thread("fork");
-        currentThread->forkedPC = pc;
-        t->Fork(fork, (int)currentThread); 
+        printf("join to pid:%d\n", pid);
+        currentThread->Join(pid);
         PCIncrease();
     }
     else if(which == PageFaultException) {
